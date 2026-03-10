@@ -1,0 +1,1237 @@
+{
+  "name": "Meta Ads LeadGen Mutuelle - Étape 1 Optimized (Intelligence Totale) - FINAL",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "f2d26c8b-dbcc-4024-bcb1-205d786ff893",
+        "formTitle": "Ads Library Finder - Mutuelle Santé",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "searchQuery",
+              "placeholder": "Ex: mutuelle santé, assurance santé senior"
+            },
+            {
+              "fieldLabel": "Country",
+              "placeholder": "FR"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6dfa1024-464b-41ed-b7c4-f4d8ed47d5e5",
+      "name": "📋 Ad Analyzer Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1632,
+        144
+      ],
+      "webhookId": "b48799fb-5dfe-4e3f-a0c1-35ddc1b4c794"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nconst searchQuery = inputData.searchQuery || \"mutuelle santé\";\nconst country = inputData.Country || \"FR\"; \nconst baseUrl = 'https://www.facebook.com/ads/library/';\nconst params = `?active_status=active&ad_type=all&country=${country}&q=${encodeURIComponent(searchQuery )}&search_type=keyword_unordered`;\n\nreturn [{\n  json: {\n    search_query: searchQuery,\n    country: country,\n    final_url: baseUrl + params\n  }\n}];"
+      },
+      "id": "e4887abc-f296-4173-a489-a89e4c6e43a7",
+      "name": "🔗 Build Dynamic URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~facebook-ads-scraper/run-sync-get-dataset-items?token=apify_api_AyytAbbDSJYNMsiVPvFXFtuSkGHmn43neUXt",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"activeStatus\": \"active\",\n  \"adType\": \"all\",\n  \"isDetailsPerAd\": true,\n  \"resultsLimit\": 15,\n  \"startUrls\": [\n    {\n      \"url\": \"{{ $json.final_url }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "54e6086a-f3de-4dff-a24d-cf3f7d4e97e7",
+      "name": "Apify - Launch Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -1248,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const processedAds = [];\nconst now = new Date();\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  const snap = data.snapshot || {};\n  \n  // EXTRACTION TOTALE\n  const isDCOPlaceholder = (str) => typeof str === 'string' && str.includes('{{') && str.includes('}}');\n  const getDataFromCards = () => {\n    if (snap.cards && snap.cards.length > 0) {\n      const firstCard = snap.cards[0];\n      return {\n        headline: firstCard.title || firstCard.body || \"Pas de titre\",\n        body_text: firstCard.body || \"Pas de texte\",\n        link_description: firstCard.linkDescription || \"\",\n        video_url: firstCard.videoHdUrl || firstCard.videoSdUrl || null,\n        is_from_cards: true\n      };\n    }\n    return null;\n  };\n  \n  let headline = snap.title || snap.ad_title || \"Pas de titre\";\n  let body_text = snap.body?.text || snap.ad_body || \"Pas de texte\";\n  let link_description = snap.linkDescription || snap.link_description || \"\";\n  let is_dco_ad = false;\n  let is_data_from_cards = false;\n  \n  if (isDCOPlaceholder(headline) || isDCOPlaceholder(body_text) || isDCOPlaceholder(link_description)) {\n    is_dco_ad = true;\n    const cardData = getDataFromCards();\n    if (cardData) {\n      headline = cardData.headline;\n      body_text = cardData.body_text;\n      link_description = cardData.link_description;\n      is_data_from_cards = true;\n    }\n  }\n  \n  const ad_copy = body_text;\n  \n  // VISUALS\n  let visual_urls = [];\n  if (snap.images && snap.images.length > 0) {\n    visual_urls = snap.images.map(img => \n      img.originalImageUrl || img.resizedImageUrl || (img.imageCrops && img.imageCrops[0] ? img.imageCrops[0].originalImageUrl : null)\n    ).filter(url => url);\n  }\n  \n  if (visual_urls.length === 0 && snap.cards && snap.cards.length > 0) {\n    for (const card of snap.cards) {\n      if (card.originalImageUrl) visual_urls.push(card.originalImageUrl);\n      else if (card.videoPreviewImageUrl) visual_urls.push(card.videoPreviewImageUrl);\n    }\n  }\n  \n  if (visual_urls.length === 0) {\n    const fallbackUrl = data.imageUrl || (snap.cards && snap.cards[0] ? snap.cards[0].originalImageUrl : null) || data.ad_snapshot_url;\n    if (fallbackUrl) visual_urls.push(fallbackUrl);\n  }\n  \n  const visual_url = visual_urls.length > 0 ? visual_urls.join(\", \") : null;\n  const visual_urls_string = visual_urls.join(\" | \");\n  \n  // AMÉLIORATION 1: Détection Variantes améliorée\n  const has_variants = visual_urls.length > 1 || data.adHasMultipleVersions || snap.adHasMultipleVersions || false;\n  const version_count = visual_urls.length > 1 ? visual_urls.length : (data.versionCount || snap.versionCount || (has_variants ? 2 : 1));\n  \n  // AUDIENCE EXTRACTION\n  let dominant_age_range = \"Unknown\";\n  let dominant_gender = \"All\";\n  let age_gender_breakdown = \"\";\n  let eu_total_reach = 0;\n  let target_locations = \"Inconnu\";\n  \n  let aaa_info = null;\n  if (data.ad_details && data.ad_details.aaa_info) {\n    aaa_info = data.ad_details.aaa_info;\n  } else if (snap.age_country_gender_reach_breakdown) {\n    aaa_info = { age_country_gender_reach_breakdown: snap.age_country_gender_reach_breakdown };\n  }\n  \n  if (data.ad_details && data.ad_details.aaa_info && data.ad_details.aaa_info.location_audience) {\n    target_locations = data.ad_details.aaa_info.location_audience.map(l => l.name).join(', ');\n  }\n  \n  if (aaa_info && aaa_info.age_country_gender_reach_breakdown && aaa_info.age_country_gender_reach_breakdown.length > 0) {\n    eu_total_reach = aaa_info.eu_total_reach || 0;\n    \n    let countryData = aaa_info.age_country_gender_reach_breakdown.find(c => c.country === 'FR');\n    if (!countryData && aaa_info.age_country_gender_reach_breakdown.length > 0) {\n      countryData = aaa_info.age_country_gender_reach_breakdown[0];\n    }\n    \n    if (countryData && countryData.age_gender_breakdowns && countryData.age_gender_breakdowns.length > 0) {\n      let maxReach = 0;\n      let maxGender = \"All\";\n      \n      for (const breakdown of countryData.age_gender_breakdowns) {\n        const totalReach = (breakdown.male || 0) + (breakdown.female || 0) + (breakdown.unknown || 0);\n        if (totalReach > maxReach) {\n          maxReach = totalReach;\n          dominant_age_range = breakdown.age_range;\n          const femaleReach = breakdown.female || 0;\n          const maleReach = breakdown.male || 0;\n          if (femaleReach > maleReach) maxGender = \"female\";\n          else if (maleReach > femaleReach) maxGender = \"male\";\n          else maxGender = \"All\";\n        }\n      }\n      dominant_gender = maxGender;\n      age_gender_breakdown = countryData.age_gender_breakdowns\n        .map(b => `${b.age_range}: M=${b.male||0} F=${b.female||0}`)\n        .join(\" | \");\n    }\n  }\n  \n  let videoUrl = data.videoUrl || (snap.videos && snap.videos[0] ? (snap.videos[0].video_hd_url || snap.videos[0].video_sd_url) : null);\n  if (!videoUrl && snap.cards && snap.cards.length > 0) {\n    for (const card of snap.cards) {\n      if (card.videoHdUrl || card.videoSdUrl) {\n        videoUrl = card.videoHdUrl || card.videoSdUrl;\n        break;\n      }\n    }\n  }\n  \n  const hasVideo = !!videoUrl;\n  \n  const startDate = new Date(data.adRunStartDate || data.startDateFormatted || snap.creation_time || now);\n  const daysActive = Math.ceil(Math.abs(now - startDate) / (1000 * 60 * 60 * 24)) || 1;\n\n  let score = 0;\n  score += Math.min(daysActive * 1.5, 30);\n  score += hasVideo ? 15 : 0;\n  score += (version_count || 0) * 10;\n  score += Math.min((eu_total_reach || 0) / 50000, 20);\n\n  // AMÉLIORATION 4: Virality Score\n  const virality_score = Math.min(\n    Math.round(\n      ((eu_total_reach || 0) / 100000) * 10 +      // Reach (max 10 pts)\n      (version_count * 5) +                         // Variantes (5 pts par variante)\n      (hasVideo ? 10 : 0) +                         // Vidéo (10 pts)\n      (daysActive > 30 ? 10 : 0)                    // Durée (10 pts si > 30j)\n    ), \n    100\n  );\n\n  // META NATIVE FORM EXTRACTION\n  let native_questions_array = [];\n  let form_type = 'external_landing_page';\n  \n  if (snap.extraTexts && snap.extraTexts.length > 0) {\n    let currentQuestion = null;\n    let currentChoices = [];\n    let hasQuestions = false;\n    \n    for (const textObj of snap.extraTexts) {\n      const txt = (textObj.text || \"\").trim();\n      if (!txt) continue;\n      \n      const lower = txt.toLowerCase();\n      \n      if (lower.includes(\"conditions générales\") || lower.includes(\"politique de confidentialité\") || lower.includes(\"merci, vous avez terminé\")) {\n          if (currentQuestion) {\n            native_questions_array.push({\n              question: currentQuestion,\n              type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n              choices: currentChoices.length > 0 ? currentChoices : null\n            });\n            currentQuestion = null;\n            currentChoices = [];\n          }\n          continue;\n      }\n      \n      if (txt.endsWith('?')) {\n        hasQuestions = true;\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n        }\n        currentQuestion = txt;\n        currentChoices = [];\n      } else if (currentQuestion && ([\"OUI\", \"NON\"].includes(txt.toUpperCase()) || txt.includes('€') || lower.includes('je ne sais pas') || txt.match(/^[0-9]+.*[0-9]+$/))) {\n        currentChoices.push(txt);\n      } else if ([\"full name\", \"phone number\", \"email\", \"post code\", \"postal code\"].includes(lower)) {\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n          currentQuestion = null;\n          currentChoices = [];\n        }\n        native_questions_array.push({\n            question: txt,\n            type: 'standard_field',\n            choices: null\n        });\n        hasQuestions = true;\n      }\n    }\n    \n    if (currentQuestion) {\n      native_questions_array.push({\n        question: currentQuestion,\n        type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n        choices: currentChoices.length > 0 ? currentChoices : null\n      });\n    }\n    \n    if (hasQuestions) {\n        form_type = 'native_meta_form';\n    }\n  }\n  \n  const parsed_form_text = native_questions_array.map(q => {\n      if (q.type === 'multiple_choice') return `[Choix Multiple] ${q.question} -> Choix: ${q.choices.join(', ')}`;\n      if (q.type === 'standard_field') return `[Donnée Demandée] ${q.question}`;\n      return `[Question Ouverte] ${q.question}`;\n  }).join('\\n');\n\n  // AMÉLIORATION 5: Créer colonnes question_1 à question_15\n  const questionsObject = {};\n  for (let i = 0; i < 15; i++) {\n    const qIndex = i + 1;\n    if (i < native_questions_array.length) {\n      const q = native_questions_array[i];\n      if (q.type === 'multiple_choice') {\n        questionsObject[`question_${qIndex}`] = `[Choix Multiple] ${q.question} -> Choix: ${q.choices.join(', ')}`;\n      } else if (q.type === 'standard_field') {\n        questionsObject[`question_${qIndex}`] = `[Donnée Demandée] ${q.question}`;\n      } else {\n        questionsObject[`question_${qIndex}`] = `[Question Ouverte] ${q.question}`;\n      }\n    } else {\n      questionsObject[`question_${qIndex}`] = \"\";\n    }\n  }\n\n  processedAds.push({\n    json: {\n      ad_id: data.adArchiveID || data.id,\n      brand: data.pageName || snap.page_name || \"Inconnu\",\n      days_active: daysActive,\n      performance_score: Math.round(score),\n      \n      headline: headline,\n      body_text: body_text,\n      link_description: link_description,\n      ad_copy: ad_copy,\n      \n      visual_url: visual_url,\n      visual_urls: visual_urls_string,\n      image_count: visual_urls.length,\n      has_image: visual_urls.length > 0,\n      \n      has_variants: has_variants,\n      version_count: version_count,\n      \n      dominant_age_range: dominant_age_range,\n      dominant_gender: dominant_gender,\n      age_gender_breakdown: age_gender_breakdown,\n      eu_total_reach: eu_total_reach,\n      target_locations: target_locations,\n      \n      is_dco_ad: is_dco_ad,\n      is_data_from_cards: is_data_from_cards,\n      \n      form_type: form_type,\n      form_fields_json: form_type === 'native_meta_form' ? JSON.stringify(native_questions_array) : '',\n      form_total_fields: native_questions_array.length,\n      native_form_questions_plain: parsed_form_text,\n      \n      cta_type: data.ctaType || snap.cta_type || snap.cta_text || \"LEARN_MORE\",\n      video_url: videoUrl,\n      has_video: hasVideo,\n      website_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || \"\",\n      landing_page_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || \"\",\n      \n      // Amélioration 1: Variantes\n      // Amélioration 4: Virality Score\n      virality_score: virality_score,\n      \n      // Amélioration 5: Questions séparées\n      ...questionsObject,\n      \n      // À remplir par les nœuds IA suivants:\n      hook_type: \"\",\n      why_it_works: \"\",\n      takeaway_1: \"\",\n      takeaway_2: \"\",\n      takeaway_3: \"\",\n      exit_hook: \"\",\n      tunnel_friction_reasons_detailed: \"\"\n    }\n  });\n}\n\nreturn processedAds.sort((a, b) => b.json.performance_score - a.json.performance_score);"
+      },
+      "id": "e35826d1-0cea-4c6e-99d1-f7235538a151",
+      "name": "📊 Process & Score (Étape 1 Complete)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        144
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "34c59668-88e9-4509-a177-2b0b7225bf67",
+      "name": "🏆 Top 3 Ads",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "30a44163-8959-468d-bc3a-16c4282fdd1d",
+              "leftValue": "={{ $json.has_video }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c62446ae-cfe4-49e0-a0fb-c9f0ba475a17",
+      "name": "Check if Video",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "Analyse cette vidéo de publicité Mutuelle Santé (Lead Gen).\nSois un expert en acquisition vidéo.\n\n1. Les 3 premières secondes (Le Hook) : Comment le créateur capte-t-il l'attention tout de suite ? (Problème, Chiffre choc, Question ?)\n2. L'Argumentaire (L'angle) : Quel est le principal argument ? (Ex: Loi Lemoine, Économie de 300€, Reste à charge 0, Mutuelle Senior)\n3. Crédibilité : Le présentateur ou le script inspirent-ils confiance ? (Score 1-10)\n4. L'Appel à l'Action (CTA) : Le message pour cliquer est-il urgent et clair ?\n\nRéponds de manière concise (max 4 phrases) et donne 1 point fort et 1 point d'amélioration.",
+        "videoUrls": "",
+        "options": {},
+        "binaryData": true,
+        "binaryPropertyName": "data"
+      },
+      "id": "9f8155cd-51c7-4bf2-bc82-87f22601aa51",
+      "name": "Analyze Video",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -100
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Pdbepjsv2MEZdkMG",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-image-check",
+              "leftValue": "={{ $json.has_image }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d54d7266-3759-4ad4-b92d-0742f0606ee9",
+      "name": "Check if Has Image",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -600,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list"
+        },
+        "text": "Analyse ce visuel de publicité pour Mutuelle Santé (Lead Gen).\nSois un expert en marketing direct et UX.\n\n1. Hook Visuel (Ce qui arrête le scroll): L'image utilise-t-elle des visages (empathie), des gros textes (bénéfices) ou des graphiques (preuves) ? Est-ce efficace ?\n2. Couleurs & Psychologie : Est-ce que cela fait pro/rassurant (bleu/vert) ou alerte/urgent (rouge/orange) ?\n3. Lisibilité du texte : Les promesses sur l'image sont-elles claires, même sur mobile ?\n4. Score de confiance (1-10) : L'image fait-elle institutionnelle ou trop \"cheap/arnaque\" ?\n\nRéponds de manière concise (max 4 phrases) et donne 1 point fort et 1 point d'amélioration.",
+        "imageUrls": "={{ $json.visual_url }}",
+        "simplify": false,
+        "options": {}
+      },
+      "id": "ee66086d-bd7a-4df1-abe1-bac06b82b31a",
+      "name": "Analyze Image",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        300
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Pdbepjsv2MEZdkMG",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Tu es un consultant expert en marketing d'assurance santé. Analyse cette publicité Facebook/Meta et retourne UNIQUEMENT un JSON valide.\n\n**AD DATA**\nBrand: {{ $json.brand }}\nDays Active: {{ $json.days_active }}\nTitle: {{ $json.headline }}\nBody: {{ $json.body_text }}\nLink Description: {{ $json.link_description }}\nVariants: {{ $json.version_count }}\nFormulaire Natif Hook Brut: {{ $json.native_form_hook || 'N/A' }}\nQuestions du Formulaire: {{ $json.native_form_questions_plain || 'N/A' }}\n\n**VISUAL ANALYSIS**\nVidéo: {{ $json.video_analysis || \"Pas de données video\" }}\nImage: {{ $json.image_analysis || \"Pas de données image\" }}\n\n**INSTRUCTIONS D'ANALYSE**\n1. **Hook Type**: Quel est l'angle principal ? (Urgence, Économie, Autorité, Loi Lemoine, Sénior...)\n2. **Why it works**: Pourquoi cette pub fonctionne-t-elle psychologiquement auprès des mutuelles santé ?\n3. **Takeaways**: Extrais 3 secrets/insights clés pour répliquer le succès (takeaway_1, takeaway_2, takeaway_3).\n4. **Hook de Sortie**: Formule l'appel à l'action / la promesse finale (ex: \"Vérifiez vos droits en 30s\", ou bien base-toi sur \"Formulaire Natif Hook Brut\").\n5. **Tunnel Friction Reasons**: Analyse détaillée de la friction du formulaire. Y a-t-il trop de questions ? Les données demandées sont-elles sensibles (ex: téléphone = haute friction) ?\n6. **Recommendations**: Comment améliorer ou durcir le tunnel pour obtenir des prospects plus chauds et moins de déchets ?\n\n**RETURN THIS EXACT JSON STRUCTURE (ONLY JSON, NO MARKDOWN, NO ```):**\n{\n  \"hook_type\": \"string (ex: Économie immédiate)\",\n  \"why_it_works\": \"string (ex: Touche à la peur de payer trop cher)\",\n  \"takeaway_1\": \"string (ex: Utiliser des couleurs bleues rassurantes)\",\n  \"takeaway_2\": \"string (ex: Promesse chiffrée de 300€)\",\n  \"takeaway_3\": \"string (ex: Ciblage explicite +55 ans)\",\n  \"hook_de_sortie\": \"string (ex: Calculez votre devis sans engagement)\",\n  \"tunnel_friction_reasons\": \"string (ex: Friction moyenne : 6 questions mais demande le numéro de téléphone)\",\n  \"tunnel_recommendations\": \"string (ex: Remplacer le champ téléphone obligatoire par un SMS OTP pour filtrer les faux numéros)\"\n}\n\nCRITICAL INSTRUCTION: You MUST output ONLY the raw JSON object. Do NOT add markdown blocks (```json). Do NOT add conversational text like 'Here is the JSON'. The very first character of your response MUST be `{` and the very last MUST be `}`.",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Tu es un consultant expert en marketing d'assurance santé. Ton but est d'aider un courtier à identifier les meilleures publicités pour générer des leads qualifiés."
+            }
+          ]
+        }
+      },
+      "id": "9e205f4f-a7c3-48b4-a168-4eebb7d862a2",
+      "name": "Generate Executive Summary",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-chat-v3.1",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        352
+      ],
+      "id": "5efa39ce-f8f5-4a04-a704-d7810a8a7e54",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "lzj0w9IKDYSIJCEg",
+          "name": "OpenRouter account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"hook_type\": \"string\",\n  \"why_it_works\": \"string\",\n  \"takeaway_1\": \"string\",\n  \"takeaway_2\": \"string\",\n  \"takeaway_3\": \"string\",\n  \"hook_de_sortie\": \"string\",\n  \"tunnel_friction_reasons\": \"string\",\n  \"tunnel_recommendations\": \"string\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        352
+      ],
+      "id": "2e9953c1-2ae6-4ed7-a059-1064e6d630d6",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "29ce04eb-4093-4a34-9747-c6bd0fa318d8",
+              "name": "Date",
+              "value": "={{ $now.format('dd/MM/yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "ad_id_insertion",
+              "name": "ad_id",
+              "value": "={{ $json.ad_id }}",
+              "type": "string"
+            },
+            {
+              "id": "4090e668-7698-41fa-9648-3f9fd69486b3",
+              "name": "brand",
+              "value": "={{ $json.brand }}",
+              "type": "string"
+            },
+            {
+              "id": "1b15969e-0321-4029-80e4-415eb9d559e7",
+              "name": "days_active",
+              "value": "={{ $json.days_active }}",
+              "type": "string"
+            },
+            {
+              "id": "dd6734a7-d015-45d0-8b61-1b8fc5fa37cb",
+              "name": "hook_type",
+              "value": "={{ $json.output.hook_type }}",
+              "type": "string"
+            },
+            {
+              "id": "270a50e4-79bf-4d8d-b51e-e3194825d478",
+              "name": "why_it_works",
+              "value": "={{ $json.output.why_it_works }}",
+              "type": "string"
+            },
+            {
+              "id": "2c7946e0-1a4c-44e6-8072-f653be52dcbf",
+              "name": "takeaway_1",
+              "value": "={{ $json.output.takeaway_1 }}",
+              "type": "string"
+            },
+            {
+              "id": "4ed44508-ee63-472a-9722-7a17101c2073",
+              "name": "takeaway_2",
+              "value": "={{ $json.output.takeaway_2 }}",
+              "type": "string"
+            },
+            {
+              "id": "baea7614-d239-4c00-a5dc-10d96137cc90",
+              "name": "takeaway_3",
+              "value": "={{ $json.output.takeaway_3 }}",
+              "type": "string"
+            },
+            {
+              "id": "3b05bde8-c5db-41af-89b2-4bf925d84497",
+              "name": "virality_score",
+              "value": "={{ $json.virality_score || 0 }}",
+              "type": "string"
+            },
+            {
+              "id": "50208a9e-721b-453b-add7-03eb828ddb64",
+              "name": "landing_page_url",
+              "value": "={{ $json.website_url }}",
+              "type": "string"
+            },
+            {
+              "id": "headline_id",
+              "name": "headline",
+              "value": "={{ $json.headline }}",
+              "type": "string"
+            },
+            {
+              "id": "score_id",
+              "name": "performance_score",
+              "value": "={{ $json.performance_score }}",
+              "type": "string"
+            },
+            {
+              "id": "cta_id",
+              "name": "cta_type",
+              "value": "={{ $json.cta_type }}",
+              "type": "string"
+            },
+            {
+              "id": "copy_id",
+              "name": "ad_copy",
+              "value": "={{ $json.ad_copy }}",
+              "type": "string"
+            },
+            {
+              "id": "video_url_id",
+              "name": "video_url",
+              "value": "={{ $json.video_url }}",
+              "type": "string"
+            },
+            {
+              "id": "visual_url_id",
+              "name": "visual_url",
+              "value": "={{ $json.visual_url }}",
+              "type": "string"
+            },
+            {
+              "id": "body_text_id",
+              "name": "body_text",
+              "value": "={{ $json.body_text }}",
+              "type": "string"
+            },
+            {
+              "id": "link_description_id",
+              "name": "link_description",
+              "value": "={{ $json.link_description }}",
+              "type": "string"
+            },
+            {
+              "id": "visual_urls_id",
+              "name": "visual_urls",
+              "value": "={{ $json.visual_urls }}",
+              "type": "string"
+            },
+            {
+              "id": "image_count_id",
+              "name": "image_count",
+              "value": "={{ $json.image_count }}",
+              "type": "string"
+            },
+            {
+              "id": "has_variants_id",
+              "name": "has_variants",
+              "value": "={{ $json.has_variants }}",
+              "type": "string"
+            },
+            {
+              "id": "version_count_id",
+              "name": "version_count",
+              "value": "={{ $json.version_count }}",
+              "type": "string"
+            },
+            {
+              "id": "dominant_age_range_id",
+              "name": "dominant_age_range",
+              "value": "={{ $json.dominant_age_range }}",
+              "type": "string"
+            },
+            {
+              "id": "dominant_gender_id",
+              "name": "dominant_gender",
+              "value": "={{ $json.dominant_gender }}",
+              "type": "string"
+            },
+            {
+              "id": "age_gender_breakdown_id",
+              "name": "age_gender_breakdown",
+              "value": "={{ $json.age_gender_breakdown }}",
+              "type": "string"
+            },
+            {
+              "id": "eu_total_reach_id",
+              "name": "eu_total_reach",
+              "value": "={{ $json.eu_total_reach }}",
+              "type": "string"
+            },
+            {
+              "id": "is_dco_ad_id",
+              "name": "is_dco_ad",
+              "value": "={{ $json.is_dco_ad }}",
+              "type": "string"
+            },
+            {
+              "id": "is_data_from_cards_id",
+              "name": "is_data_from_cards",
+              "value": "={{ $json.is_data_from_cards }}",
+              "type": "string"
+            },
+            {
+              "id": "88f74a66-a61e-4d54-8e09-7c25ae55dd49",
+              "name": "email_field_name",
+              "value": "={{ $json.email_field_name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a330dfda-eeb1-4f9e-bd13-6e583cdc5510",
+              "name": "phone_field_name",
+              "value": "={{ $json.phone_field_name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f7ba7b9d-3300-466f-a617-8f5a5a8afdce",
+              "name": "birth_date_field_name",
+              "value": "={{ $json.birth_date_field_name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "37881021-71e5-4d96-a83f-93393dc69e0f",
+              "name": "postal_code_field_name",
+              "value": "={{ $json.postal_code_field_name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "860dfd61-7ebd-4108-a102-ca491db3d951",
+              "name": "social_status_field_name",
+              "value": "={{ $json.social_status_field_name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "5b3d9622-65c5-4926-b416-70860a974f4d",
+              "name": "tunnel_quality_score",
+              "value": "={{ $json.tunnel_quality_score || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "03b7b198-29f3-4d86-a183-c53ff2c0a5d6",
+              "name": "tunnel_friction_level",
+              "value": "={{ $json.tunnel_friction_level || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ebb1c170-9522-48d8-9ec9-d539ecf0eb63",
+              "name": "tunnel_friction_reasons",
+              "value": "={{ $json.output.tunnel_friction_reasons }}",
+              "type": "string"
+            },
+            {
+              "id": "43d5814d-8fb7-4815-8d18-d5bd29b58a3d",
+              "name": "tunnel_recommendations",
+              "value": "={{ $json.output.tunnel_recommendations }}",
+              "type": "string"
+            },
+            {
+              "id": "1754dda0-208f-40c2-b9c1-1cde7c10f041",
+              "name": "tunnel_estimated_conversion_rate",
+              "value": "={{ $json.tunnel_estimated_conversion_rate || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "target_locations_id",
+              "name": "target_locations",
+              "value": "={{ $json.target_locations }}",
+              "type": "string"
+            },
+            {
+              "id": "native_form_questions_plain_id",
+              "name": "native_form_questions_plain",
+              "value": "={{ $json.native_form_questions_plain }}",
+              "type": "string"
+            },
+            {
+              "id": "landing_page_promise_id",
+              "name": "landing_page_promise",
+              "value": "={{ $json.output.hook_de_sortie }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c85f9665-ac93-46ea-b0d4-b9ab04fa5553",
+      "name": "Map to Google Sheet (Étape 1 Complete)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1940,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "122fmuIfpKXh-UHzh3yxo4t6IrGmqQArw0mWiSMgXvn0",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 779726472,
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.Date }}",
+            "ad_id": "={{ $json.ad_id }}",
+            "brand": "={{ $json.brand }}",
+            "days_active": "={{ $json.days_active }}",
+            "performance_score": "={{ $json.performance_score }}/100",
+            "headline": "={{ $json.headline }}",
+            "body_text": "={{ $json.body_text }}",
+            "link_description": "={{ $json.link_description }}",
+            "ad_copy": "={{ $json.ad_copy }}",
+            "cta_type": "={{ $json.cta_type }}",
+            "visual_urls": "={{ $json.visual_urls }}",
+            "image_count": "={{ $json.image_count }}",
+            "has_variants": "={{ $json.has_variants }}",
+            "version_count": "={{ $json.version_count }}",
+            "dominant_age_range": "={{ $json.dominant_age_range }}",
+            "dominant_gender": "={{ $json.dominant_gender }}",
+            "age_gender_breakdown": "={{ $json.age_gender_breakdown }}",
+            "eu_total_reach": "={{ $json.eu_total_reach }}",
+            "is_dco_ad": "={{ $json.is_dco_ad }}",
+            "is_data_from_cards": "={{ $json.is_data_from_cards }}",
+            "hook_type": "={{ $json.hook_type }}",
+            "why_it_works": "={{ $json.why_it_works }}",
+            "takeaway_1": "={{ $json.takeaway_1 }}",
+            "takeaway_2": "={{ $json.takeaway_2 }}",
+            "takeaway_3": "={{ $json.takeaway_3 }}",
+            "virality_score": "={{ $json.virality_score }}",
+            "video_url": "={{ $json.video_url }}",
+            "landing_page_url": "={{ $json.landing_page_url }}",
+            "landing_page_title": "={{ $json.landing_page_title }}",
+            "landing_page_subtitle": "={{ $json.landing_page_subtitle }}",
+            "landing_page_promise": "={{ $json.landing_page_promise }}",
+            "form_type": "={{ $json.form_type }}",
+            "form_fields_json": "={{ $json.form_fields_json }}",
+            "form_total_fields": "={{ $json.form_total_fields }}",
+            "form_required_fields": "={{ $json.form_required_fields }}",
+            "form_optional_fields": "={{ $json.form_optional_fields }}",
+            "form_has_email": "={{ $json.form_has_email }}",
+            "form_has_phone": "={{ $json.form_has_phone }}",
+            "form_has_birth_date": "={{ $json.form_has_birth_date }}",
+            "form_has_postal_code": "={{ $json.form_has_postal_code }}",
+            "form_has_social_status": "={{ $json.form_has_social_status }}",
+            "cta_text": "={{ $json.cta_text }}",
+            "estimated_completion_time": "={{ $json.estimated_completion_time }}",
+            "tunnel_quality_score": "={{ $json.tunnel_quality_score }}",
+            "tunnel_friction_level": "={{ $json.tunnel_friction_level }}",
+            "tunnel_friction_reasons": "={{ $json.tunnel_friction_reasons }}",
+            "tunnel_recommendations": "={{ $json.tunnel_recommendations }}",
+            "tunnel_estimated_conversion_rate": "={{ $json.tunnel_estimated_conversion_rate }}",
+            "email_field_name": "={{ $json.email_field_name }}",
+            "phone_field_name": "={{ $json.phone_field_name }}",
+            "birth_date_field_name": "={{ $json.birth_date_field_name }}",
+            "postal_code_field_name": "={{ $json.postal_code_field_name }}",
+            "social_status_field_name": "={{ $json.social_status_field_name }}",
+            "target_locations": "={{ $json.target_locations }}",
+            "native_form_questions_plain": "={{ $json.native_form_questions_plain }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "bd806357-0136-4666-9189-e52516ab00fa",
+      "name": "Append row in sheet (Étape 1 Complete)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2140,
+        144
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tN2MeT90zt1ABCYZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const formType = $json.form_type || 'external_landing_page';\nconst landingPageUrl = $json.landing_page_url || $json.website_url || $json.linkUrl || '';\n\nif (formType === 'native_meta_form' || landingPageUrl.includes('fb.me') || landingPageUrl.includes('facebook.com/lead')) {\n  return [{\n    json: {\n      ...$input.first().json,\n      form_type: 'native_meta_form',\n      landing_page_title: 'Formulaire natif Meta',\n      landing_page_subtitle: '',\n      landing_page_promise: 'Généré via Facebook',\n      form_required_fields: $json.form_total_fields,\n      form_optional_fields: 0,\n      form_has_email: ($json.native_form_questions_plain || \"\").toLowerCase().includes('email'), email_field_name: 'email',\n      form_has_phone: ($json.native_form_questions_plain || \"\").toLowerCase().includes('phone') || ($json.native_form_questions_plain || \"\").toLowerCase().includes('téléphone'), phone_field_name: 'phone',\n      form_has_birth_date: false, birth_date_field_name: '',\n      form_has_postal_code: ($json.native_form_questions_plain || \"\").toLowerCase().includes('post code'), postal_code_field_name: 'postal_code',\n      form_has_social_status: false, social_status_field_name: '',\n      cta_text: 'Envoyer',\n      estimated_completion_time: '1 min',\n      skip_html_fetch: true,\n      tunnel_quality_score: 5,\n      tunnel_friction_level: \"low\",\n      tunnel_friction_reasons: \"native_form_no_friction\",\n      tunnel_recommendations: \"use_webhook_or_graph_api\",\n      tunnel_estimated_conversion_rate: 40\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    form_type: 'external_landing_page',\n    landing_page_url: landingPageUrl,\n    skip_html_fetch: !landingPageUrl\n  }\n}];"
+      },
+      "id": "3e65ac05-77d4-4a88-8d19-1bb33cb93ed4",
+      "name": "📄 Prepare Landing Page Extraction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.landing_page_url }}",
+        "options": {
+          "redirect": {},
+          "timeout": 10000
+        }
+      },
+      "id": "a28acff2-2f58-40a8-b1b4-5b0399590196",
+      "name": "🌐 Fetch Landing Page HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        840,
+        260
+      ],
+      "onError": "continueErrorHandling"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst html = input.data || input.body || '';\n\nif (!html) {\n  return [{\n    json: {\n      ...input,\n      landing_page_title: 'Erreur: Page non accessible',\n      form_type: 'error',\n      form_fields_json: '',\n      form_total_fields: 0, form_required_fields: 0, form_optional_fields: 0,\n      form_has_email: false, email_field_name: '',\n      form_has_phone: false, phone_field_name: '',\n      form_has_birth_date: false, birth_date_field_name: '',\n      form_has_postal_code: false, postal_code_field_name: '',\n      form_has_social_status: false, social_status_field_name: '',\n      cta_text: '',\n      estimated_completion_time: ''\n    }\n  }];\n}\n\nconst extractText = (m, fallback) => m ? m[1].replace(/<[^>]*>?/gm, '').trim() : fallback;\nconst h1Match = html.match(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/i);\nconst h2Match = html.match(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/i);\nconst pMatch = html.match(/<p[^>]*>([\\s\\S]*?)<\\/p>/i);\n\nconst landing_page_title = extractText(h1Match, 'Pas de titre');\nconst landing_page_subtitle = extractText(h2Match, '');\nconst landing_page_promise = extractText(pMatch, '').substring(0, 150);\n\nconst formFields = [];\nfor (const m of html.matchAll(/<input[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    const t = (m[0].match(/type=[\"']([^\"']*)[\"']/i) || [, 'text'])[1].toLowerCase();\n    if(n && t !== 'hidden' && t !== 'submit') formFields.push({ name: n, type: t, required: /required/i.test(m[0]) });\n}\nfor (const m of html.matchAll(/<select[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    if(n) formFields.push({ name: n, type: 'select', required: /required/i.test(m[0]) });\n}\n\nlet o = { email: false, phone: false, birth: false, postal: false, social: false };\nlet fN = { email: '', phone: '', birth: '', postal: '', social: '' };\n\nformFields.forEach(f => {\n    const n = f.name.toLowerCase();\n    if (!o.email && (n.includes('email') || f.type === 'email' || n.includes('mail'))) { o.email = true; fN.email = f.name; }\n    if (!o.phone && (n.includes('phone') || n.includes('tel') || f.type === 'tel')) { o.phone = true; fN.phone = f.name; }\n    if (!o.birth && (n.includes('birth') || n.includes('date') || n.includes('age') || n.includes('naissance'))) { o.birth = true; fN.birth = f.name; }\n    if (!o.postal && (n.includes('postal') || n.includes('code') || n.includes('zip') || n.includes('cp'))) { o.postal = true; fN.postal = f.name; }\n    if (!o.social && (n.includes('status') || n.includes('regime') || n.includes('secu') || n.includes('situation'))) { o.social = true; fN.social = f.name; }\n});\n\nconst ctaMatch = html.match(/<button[^>]*>([\\s\\S]*?)<\\/button>/i) || html.match(/<input[^>]*type=[\"']submit[\"'][^>]*value=[\"']([^\"']*)[\"']/i);\n\nreturn [{\n  json: {\n    ...input,\n    landing_page_title: landing_page_title,\n    landing_page_subtitle: landing_page_subtitle,\n    landing_page_promise: landing_page_promise,\n    form_type: html.includes('meta.com') ? 'native_meta' : 'external_landing_page',\n    form_fields_json: JSON.stringify(formFields),\n    form_total_fields: formFields.length,\n    form_required_fields: formFields.filter(f => f.required).length,\n    form_optional_fields: formFields.length - formFields.filter(f => f.required).length,\n    form_has_email: o.email, email_field_name: fN.email,\n    form_has_phone: o.phone, phone_field_name: fN.phone,\n    form_has_birth_date: o.birth, birth_date_field_name: fN.birth,\n    form_has_postal_code: o.postal, postal_code_field_name: fN.postal,\n    form_has_social_status: o.social, social_status_field_name: fN.social,\n    cta_text: extractText(ctaMatch, 'Envoyer'),\n    estimated_completion_time: Math.round((formFields.length * 0.5 + 0.5)) + \" min\"\n  }\n}];"
+      },
+      "id": "0fb2a90a-3b5f-46ea-af11-1accbfcf69e8",
+      "name": "🔍 Parse Landing Page Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Tu es un expert mondial en optimisation de tunnels de conversion (CRO) et génération de leads (Assurance/Mutuelle Santé).\n\nOn vient de scraper les données du formulaire (ou de la Landing Page) après le clic sur la publicité.\n\n**DONNÉES DU TUNNEL À ANALYSER**\nTitre de la page: {{ $json.landing_page_title }}\nPromesse de la page: {{ $json.landing_page_promise }}\nType de formulaire: {{ $json.form_type }} (native_meta = directement sur facebook/instagram, external_landing_page = site web)\nTotal des champs: {{ $json.form_total_fields }}\nChamps obligatoires: {{ $json.form_required_fields }}\nDemande un Email ? {{ $json.form_has_email }}\nDemande un Téléphone ? {{ $json.form_has_phone }}\nDemande la Date de naissance/Âge ? {{ $json.form_has_birth_date }}\nDemande le Code Postal ? {{ $json.form_has_postal_code }}\nDemande le Régime Social / Situation ? {{ $json.form_has_social_status }}\nTexte du Bouton (CTA): {{ $json.cta_text }}\nTemps d'inscription estimé: {{ $json.estimated_completion_time }}\n\n**RÈGLES D'ANALYSE (Le \"Deep Dive\") SPÉCIAL LEAD MUTUELLE**\n1. RÈGLE D'OR : En Mutuelle, OBTENIR LE NUMÉRO DE TÉLÉPHONE EST OBLIGATOIRE ET VITAL pour vendre au prospect. Le fait de demander le téléphone N'EST PAS UNE FRICTION ERREUR, c'est le but même du formulaire ! Ne baisse pas la note si le téléphone est demandé.\n2. Un formulaire natif Meta sans question qualifiante a de super taux de clics (25%-45%) mais produit des leads souvent injoignables. Il faut recommander de rajouter 1 ou 2 questions qualifiantes (ex: Quel est l'âge ou le régime) pour filtrer les curieux.\n3. Une landing page externe avec beaucoup de champs au début fait fuir. Recommande un tunnel \"Multi-step\" (une question simple d'abord, le numéro de téléphone tout à la fin) pour maximiser les conversions.\n4. L'alignement de la promesse (Si la pub promet \"Devis Rapide\", le bouton final ne doit pas contredire la promesse).\n\n**GÉNÈRE TON ANALYSE STRICTEMENT SOUS CE FORMAT JSON**\n- tunnel_quality_score (De 1 à 10 : 10 = formulaire optimisé pour un lead mutuelle joignable)\n- tunnel_friction_level (\"low\", \"medium\", \"high\")\n- tunnel_friction_reasons (Array de chaînes courtes JSON : ex: [\"long_single_page_form\"])\n- tunnel_recommendations (Array de recommandations courtes JSON : ex: [\"use_multi_step_strategy\", \"add_trust_badge_under_phone\"])\n- tunnel_estimated_conversion_rate (Un nombre entier théorique représentant le pourcentage de conversion, ex: 15)\n\nRéponds UNIQUEMENT avec le JSON valide, sans balises javascript ni markdown.\n\nCRITICAL INSTRUCTION: You MUST output ONLY the raw JSON object. Do NOT add markdown blocks (```json). Do NOT add conversational text like 'Here is the JSON'. The very first character of your response MUST be `{` and the very last MUST be `}`.",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Tu es un consultant expert en optimisation de tunnels de conversion pour l'assurance santé."
+            }
+          ]
+        }
+      },
+      "id": "4b496c95-8681-43db-84a8-6ae13c212b16",
+      "name": "🎯 Analyze Tunnel Quality",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        1240,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-chat-v3.1",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        352
+      ],
+      "id": "01e38fa3-0a4e-4920-bbe1-c7e1956cea3b",
+      "name": "OpenRouter Chat Model (Tunnel)",
+      "credentials": {
+        "openRouterApi": {
+          "id": "lzj0w9IKDYSIJCEg",
+          "name": "OpenRouter account 3"
+        }
+      }
+    },
+    {
+      "id": "decompose-tunnel-json",
+      "icon": "fa:code",
+      "name": "Decompose Tunnel JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const input = $input.first().json;\n\n// Extract tunnel data from the input\nlet tunnelData = {\n  tunnel_quality_score: 0,\n  tunnel_friction_level: 'unknown',\n  tunnel_friction_reasons: [],\n  tunnel_recommendations: [],\n  tunnel_estimated_conversion_rate: 0\n};\n\n// Handle different input formats\nif (typeof input === 'string') {\n  try {\n    const parsed = JSON.parse(input);\n    if (parsed.output) {\n      tunnelData = { ...tunnelData, ...parsed.output };\n    } else {\n      tunnelData = { ...tunnelData, ...parsed };\n    }\n  } catch (e) {\n    console.log('Could not parse tunnel data from string');\n  }\n}\nelse if (typeof input === 'object' && input !== null) {\n  // Check if it's nested under 'output' key\n  if (input.output && typeof input.output === 'object') {\n    tunnelData = { ...tunnelData, ...input.output };\n  } else {\n    tunnelData = { ...tunnelData, ...input };\n  }\n}\n\n// Convert arrays to comma-separated strings\nconst reasons = Array.isArray(tunnelData.tunnel_friction_reasons) \n  ? tunnelData.tunnel_friction_reasons.join(', ') \n  : (tunnelData.tunnel_friction_reasons || '');\n\nconst recommendations = Array.isArray(tunnelData.tunnel_recommendations) \n  ? tunnelData.tunnel_recommendations.join(', ') \n  : (tunnelData.tunnel_recommendations || '');\n\nreturn {\n  json: {\n    tunnel_quality_score: tunnelData.tunnel_quality_score || 0,\n    tunnel_friction_level: tunnelData.tunnel_friction_level || 'unknown',\n    tunnel_friction_reasons: reasons,\n    tunnel_recommendations: recommendations,\n    tunnel_estimated_conversion_rate: tunnelData.tunnel_estimated_conversion_rate || 0\n  }\n};"
+      },
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "leftValue": "",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "skip_fetch",
+              "leftValue": "={{ $json.skip_html_fetch }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "2c4c4d19-8af6-4b14-8d16-8bfa7f6a6f52",
+      "name": "Check Native Form",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        144
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "04e045dd-0559-4491-b64f-7998c3b27ed7",
+      "name": "Merge Form Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1760,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\"tunnel_quality_score\":8,\"tunnel_friction_level\":\"low\",\"tunnel_friction_reasons\":[\"too_many_fields\"],\"tunnel_recommendations\":[\"reduce_fields\"],\"tunnel_estimated_conversion_rate\":35}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1400,
+        460
+      ],
+      "id": "d993dcfd-4607-4890-86f4-467a2fd2575c",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const originalItem = $('Check if Video').item.json;\nconst response = $json.candidates?.[0]?.content?.parts?.[0]?.text || $json.text || 'No content';\nreturn [{ json: { ...originalItem, video_analysis: response } }];"
+      },
+      "id": "1784edd4-b3c6-4d9e-b442-48f9294bd342",
+      "name": "Keep Ad Video",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const originalItem = $('Check if Video').item.json;\nreturn [{ json: { ...originalItem, video_analysis: 'Pas de vidéo' } }];"
+      },
+      "id": "c646b32e-f249-4ad4-b599-64a648f9c1f3",
+      "name": "No Video",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const originalItem = $('Check if Has Image').item.json;\nconst response = $json.candidates?.[0]?.content?.parts?.[0]?.text || $json.text || 'No content';\nreturn [{ json: { ...originalItem, image_analysis: response } }];"
+      },
+      "id": "1d441deb-08fb-4f21-96e1-62dadf99bf7b",
+      "name": "Keep Ad Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const originalItem = $('Check if Has Image').item.json;\nreturn [{ json: { ...originalItem, image_analysis: 'Pas d\\'image' } }];"
+      },
+      "id": "d143c676-5213-49af-adb6-c5860ee9ea29",
+      "name": "No Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// With Structured Output Parser active, the AI output is an object directly on $json.\nlet aiOutput = $json;\nif (aiOutput.output && typeof aiOutput.output === 'object') {\n  aiOutput = aiOutput.output;\n}\n\nlet original = {};\n\n// Safely try to get the item from the node that actually executed right before the LLM\ntry {\n  original = $('Keep Ad Image').first().json;\n} catch (e) {\n  try {\n    original = $('No Image').first().json;\n  } catch(e2) {\n    try {\n      original = $('Check if Has Image').first().json;\n    } catch(e3) {\n      original = {};\n    }\n  }\n}\n\nreturn [{\n  json: {\n    ...original,\n    output: aiOutput\n  }\n}];"
+      },
+      "id": "merge-exec-summary-1234",
+      "name": "Merge Exec Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.video_url }}",
+        "responseFormat": "file",
+        "options": {}
+      },
+      "id": "download-video-http-id",
+      "name": "Download Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -550,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const binaryData = $binary.data;\nbinaryData.mimeType = 'video/mp4';\nbinaryData.fileExtension = 'mp4';\nbinaryData.fileName = 'video.mp4';\nreturn {\n  json: $json,\n  binary: { data: binaryData }\n};"
+      },
+      "id": "fix-video-mime-id",
+      "name": "Fix Video MIME",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        -100
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "📋 Ad Analyzer Form": {
+      "main": [
+        [
+          {
+            "node": "🔗 Build Dynamic URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔗 Build Dynamic URL": {
+      "main": [
+        [
+          {
+            "node": "Apify - Launch Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify - Launch Scraper": {
+      "main": [
+        [
+          {
+            "node": "📊 Process & Score (Étape 1 Complete)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Process & Score (Étape 1 Complete)": {
+      "main": [
+        [
+          {
+            "node": "🏆 Top 3 Ads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map to Google Sheet (Étape 1 Complete)": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet (Étape 1 Complete)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Prepare Landing Page Extraction": {
+      "main": [
+        [
+          {
+            "node": "Check Native Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Fetch Landing Page HTML": {
+      "main": [
+        [
+          {
+            "node": "🔍 Parse Landing Page Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Parse Landing Page Content": {
+      "main": [
+        [
+          {
+            "node": "🎯 Analyze Tunnel Quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Executive Summary",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Generate Executive Summary",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Executive Summary": {
+      "main": [
+        [
+          {
+            "node": "Merge Exec Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model (Tunnel)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🎯 Analyze Tunnel Quality",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Analyze Tunnel Quality": {
+      "main": [
+        [
+          {
+            "node": "Decompose Tunnel JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decompose Tunnel JSON": {
+      "main": [
+        [
+          {
+            "node": "Merge Form Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Check Native Form": {
+      "main": [
+        [
+          {
+            "node": "Merge Form Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🌐 Fetch Landing Page HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Form Data": {
+      "main": [
+        [
+          {
+            "node": "Map to Google Sheet (Étape 1 Complete)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "🎯 Analyze Tunnel Quality",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏆 Top 3 Ads": {
+      "main": [
+        [
+          {
+            "node": "Check if Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Video": {
+      "main": [
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Video": {
+      "main": [
+        [
+          {
+            "node": "Keep Ad Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Ad Video": {
+      "main": [
+        [
+          {
+            "node": "Check if Has Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Video": {
+      "main": [
+        [
+          {
+            "node": "Check if Has Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Has Image": {
+      "main": [
+        [
+          {
+            "node": "Analyze Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Image": {
+      "main": [
+        [
+          {
+            "node": "Keep Ad Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Ad Image": {
+      "main": [
+        [
+          {
+            "node": "Generate Executive Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Image": {
+      "main": [
+        [
+          {
+            "node": "Generate Executive Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Exec Summary": {
+      "main": [
+        [
+          {
+            "node": "📄 Prepare Landing Page Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Fix Video MIME",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Video MIME": {
+      "main": [
+        [
+          {
+            "node": "Analyze Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "79e68d69-2d3d-4d90-bbc3-42d68002e1c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e790a3d8db19bc6f0b03326cb3567829d1b111dd7e75c93e4faf512e9c21e17d"
+  },
+  "id": "dnKAATLV8vcYOkfG",
+  "tags": []
+}
