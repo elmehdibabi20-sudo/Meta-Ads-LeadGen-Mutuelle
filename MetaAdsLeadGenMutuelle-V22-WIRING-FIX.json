@@ -216,7 +216,7 @@
       "parameters": {
         "promptType": "define",
         "text": "Tu es un consultant expert en marketing d'assurance santé. Analyse cette publicité Facebook/Meta et retourne UNIQUEMENT un JSON valide.\n\n**AD DATA**\nBrand: {{ $json.brand }}\nDays Active: {{ $json.days_active }}\nTitle: {{ $json.headline }}\nBody: {{ $json.body_text }}\nLink Description: {{ $json.link_description }}\nVariants: {{ $json.version_count }}\nFormulaire Natif Hook Brut: {{ $json.native_form_hook || 'N/A' }}\nQuestions du Formulaire: {{ $json.native_form_questions_plain || 'N/A' }}\n\n**VISUAL ANALYSIS**\nVidéo: {{ $json.video_analysis || \"Pas de données video\" }}\nImage: {{ $json.image_analysis || \"Pas de données image\" }}\n\n**INSTRUCTIONS D'ANALYSE**\n1. **Hook Type**: Quel est l'angle principal ? (Urgence, Économie, Autorité, Loi Lemoine, Sénior...)\n2. **Why it works**: Pourquoi cette pub fonctionne-t-elle psychologiquement auprès des mutuelles santé ?\n3. **Takeaways**: Extrais 3 secrets/insights clés pour répliquer le succès (takeaway_1, takeaway_2, takeaway_3).\n4. **Hook de Sortie**: Formule l'appel à l'action / la promesse finale (ex: \"Vérifiez vos droits en 30s\", ou bien base-toi sur \"Formulaire Natif Hook Brut\").\n5. **Tunnel Friction Reasons**: Analyse détaillée de la friction du formulaire. Y a-t-il trop de questions ? Les données demandées sont-elles sensibles (ex: téléphone = haute friction) ?\n6. **Recommendations**: Comment améliorer ou durcir le tunnel pour obtenir des prospects plus chauds et moins de déchets ?\n\n**RETURN THIS EXACT JSON STRUCTURE (ONLY JSON, NO MARKDOWN, NO ```):**\n{\n  \"hook_type\": \"string (ex: Économie immédiate)\",\n  \"why_it_works\": \"string (ex: Touche à la peur de payer trop cher)\",\n  \"takeaway_1\": \"string (ex: Utiliser des couleurs bleues rassurantes)\",\n  \"takeaway_2\": \"string (ex: Promesse chiffrée de 300€)\",\n  \"takeaway_3\": \"string (ex: Ciblage explicite +55 ans)\",\n  \"hook_de_sortie\": \"string (ex: Calculez votre devis sans engagement)\",\n  \"tunnel_friction_reasons\": \"string (ex: Friction moyenne : 6 questions mais demande le numéro de téléphone)\",\n  \"tunnel_recommendations\": \"string (ex: Remplacer le champ téléphone obligatoire par un SMS OTP pour filtrer les faux numéros)\"\n}\n\nCRITICAL INSTRUCTION: You MUST output ONLY the raw JSON object. Do NOT add markdown blocks (```json). Do NOT add conversational text like 'Here is the JSON'. The very first character of your response MUST be `{` and the very last MUST be `}`.",
-        "hasOutputParser": true,
+        "hasOutputParser": false,
         "messages": {
           "messageValues": [
             {
@@ -1400,17 +1400,6 @@
           {
             "node": "Generate Executive Summary",
             "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Structured Output Parser": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "Generate Executive Summary",
-            "type": "ai_outputParser",
             "index": 0
           }
         ]
