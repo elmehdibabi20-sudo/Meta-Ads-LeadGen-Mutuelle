@@ -1302,6 +1302,32 @@
           "name": "Google Sheets account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst required = ['ad_id', 'brand', 'hook_type', 'landing_page_url', 'form_type'];\n\nreturn items.map((item) => {\n  const j = item.json || {};\n\n  const missing_required = required.filter((k) => {\n    const v = j[k];\n    return v === undefined || v === null || String(v).trim() === '';\n  });\n\n  return {\n    json: {\n      ...j,\n      __debug_sheet_payload: {\n        ad_id: j.ad_id || '',\n        brand: j.brand || '',\n        hook_type: j.hook_type || '',\n        why_it_works: j.why_it_works || '',\n        takeaway_1: j.takeaway_1 || '',\n        takeaway_2: j.takeaway_2 || '',\n        takeaway_3: j.takeaway_3 || '',\n        tunnel_friction_reasons: j.tunnel_friction_reasons || '',\n        tunnel_recommendations: j.tunnel_recommendations || '',\n        form_type: j.form_type || '',\n        landing_page_url: j.landing_page_url || ''\n      },\n      __debug_missing_required: missing_required,\n      __debug_ready_for_append: missing_required.length === 0\n    }\n  };\n});"
+      },
+      "id": "debug_external_sheet_payload",
+      "name": "Debug External Sheet Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst required = ['ad_id', 'brand', 'hook_type', 'landing_page_url', 'form_type'];\n\nreturn items.map((item) => {\n  const j = item.json || {};\n\n  const missing_required = required.filter((k) => {\n    const v = j[k];\n    return v === undefined || v === null || String(v).trim() === '';\n  });\n\n  return {\n    json: {\n      ...j,\n      __debug_sheet_payload: {\n        ad_id: j.ad_id || '',\n        brand: j.brand || '',\n        hook_type: j.hook_type || '',\n        why_it_works: j.why_it_works || '',\n        takeaway_1: j.takeaway_1 || '',\n        takeaway_2: j.takeaway_2 || '',\n        takeaway_3: j.takeaway_3 || '',\n        tunnel_friction_reasons: j.tunnel_friction_reasons || '',\n        tunnel_recommendations: j.tunnel_recommendations || '',\n        form_type: j.form_type || '',\n        landing_page_url: j.landing_page_url || ''\n      },\n      __debug_missing_required: missing_required,\n      __debug_ready_for_append: missing_required.length === 0\n    }\n  };\n});"
+      },
+      "id": "debug_native_sheet_payload",
+      "name": "Debug Native Sheet Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        -60
+      ]
     }
   ],
   "pinData": {},
@@ -1657,7 +1683,7 @@
       "main": [
         [
           {
-            "node": "Append Sheet (Native Form)",
+            "node": "Debug Native Sheet Payload",
             "type": "main",
             "index": 0
           }
@@ -1668,7 +1694,29 @@
       "main": [
         [
           {
+            "node": "Debug External Sheet Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug External Sheet Payload": {
+      "main": [
+        [
+          {
             "node": "Append Sheet (External Format)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Native Sheet Payload": {
+      "main": [
+        [
+          {
+            "node": "Append Sheet (Native Form)",
             "type": "main",
             "index": 0
           }
