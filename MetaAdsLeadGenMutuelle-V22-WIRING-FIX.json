@@ -1,15 +1,15 @@
 {
-  "name": "Meta Ads LeadGen Mutuelle - Étape 1 Optimized (Intelligence Totale) - FINAL",
+  "name": "Meta Ads LeadGen Mutuelle - Ã‰tape 1 Optimized (Intelligence Totale) - FINAL",
   "nodes": [
     {
       "parameters": {
         "path": "1ffdeb08-ec24-453b-80c0-8bb9a9d52590",
-        "formTitle": "Ads Library Finder - Mutuelle Santé",
+        "formTitle": "Ads Library Finder - Mutuelle SantÃ©",
         "formFields": {
           "values": [
             {
               "fieldLabel": "searchQuery",
-              "placeholder": "Ex: mutuelle santé, assurance santé senior"
+              "placeholder": "Ex: mutuelle santÃ©, assurance santÃ© senior"
             },
             {
               "fieldLabel": "Country",
@@ -20,7 +20,7 @@
         "options": {}
       },
       "id": "aec328f0-7032-482b-818b-a7b2b079302a",
-      "name": "📋 Ad Analyzer Form",
+      "name": "Ad Analyzer Form",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 1,
       "position": [
@@ -34,7 +34,7 @@
         "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const inputData = item.json || {};\n  const searchQuery = inputData.searchQuery || 'mutuelle sant?';\n  const country = inputData.Country || 'FR';\n  const baseUrl = 'https://www.facebook.com/ads/library/';\n  const params = `?active_status=active&ad_type=all&country=${country}&q=${encodeURIComponent(searchQuery)}&search_type=keyword_unordered`;\n\n  return {\n    json: {\n      ...inputData,\n      search_query: searchQuery,\n      country,\n      final_url: baseUrl + params\n    }\n  };\n});"
       },
       "id": "ef0fd826-4faa-4fdb-b82d-0a26149ce188",
-      "name": "🔗 Build Dynamic URL",
+      "name": "Build Dynamic URL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -62,10 +62,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const processedAds = [];\nconst now = new Date();\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  const snap = data.snapshot || {};\n  \n  // EXTRACTION TOTALE\n  const isDCOPlaceholder = (str) => typeof str === 'string' && str.includes('{{') && str.includes('}}');\n  const getDataFromCards = () => {\n    if (snap.cards && snap.cards.length > 0) {\n      const firstCard = snap.cards[0];\n      return {\n        headline: firstCard.title || firstCard.body || \"Pas de titre\",\n        body_text: firstCard.body || \"Pas de texte\",\n        link_description: firstCard.linkDescription || \"\",\n        video_url: firstCard.videoHdUrl || firstCard.videoSdUrl || null,\n        is_from_cards: true\n      };\n    }\n    return null;\n  };\n  \n  let headline = snap.title || snap.ad_title || \"Pas de titre\";\n  let body_text = snap.body?.text || snap.ad_body || \"Pas de texte\";\n  let link_description = snap.linkDescription || snap.link_description || \"\";\n  let is_dco_ad = false;\n  let is_data_from_cards = false;\n  \n  if (isDCOPlaceholder(headline) || isDCOPlaceholder(body_text) || isDCOPlaceholder(link_description)) {\n    is_dco_ad = true;\n    const cardData = getDataFromCards();\n    if (cardData) {\n      headline = cardData.headline;\n      body_text = cardData.body_text;\n      link_description = cardData.link_description;\n      is_data_from_cards = true;\n    }\n  }\n  \n  const ad_copy = body_text;\n  \n  // VISUALS\n  let visual_urls = [];\n  if (snap.images && snap.images.length > 0) {\n    visual_urls = snap.images.map(img => \n      img.originalImageUrl || img.resizedImageUrl || (img.imageCrops && img.imageCrops[0] ? img.imageCrops[0].originalImageUrl : null)\n    ).filter(url => url);\n  }\n  \n  if (visual_urls.length === 0 && snap.cards && snap.cards.length > 0) {\n    for (const card of snap.cards) {\n      if (card.originalImageUrl) visual_urls.push(card.originalImageUrl);\n      else if (card.videoPreviewImageUrl) visual_urls.push(card.videoPreviewImageUrl);\n    }\n  }\n  \n  if (visual_urls.length === 0) {\n    const fallbackUrl = data.imageUrl || (snap.cards && snap.cards[0] ? snap.cards[0].originalImageUrl : null) || data.ad_snapshot_url;\n    if (fallbackUrl) visual_urls.push(fallbackUrl);\n  }\n  \n  const visual_url = visual_urls.length > 0 ? visual_urls.join(\", \") : null;\n  const visual_urls_string = visual_urls.join(\" | \");\n  \n  // AMÉLIORATION 1: Détection Variantes améliorée\n  const has_variants = visual_urls.length > 1 || data.adHasMultipleVersions || snap.adHasMultipleVersions || false;\n  const version_count = visual_urls.length > 1 ? visual_urls.length : (data.versionCount || snap.versionCount || (has_variants ? 2 : 1));\n  \n  // AUDIENCE EXTRACTION\n  let dominant_age_range = \"Unknown\";\n  let dominant_gender = \"All\";\n  let age_gender_breakdown = \"\";\n  let eu_total_reach = 0;\n  let target_locations = \"Inconnu\";\n  \n  let aaa_info = null;\n  if (data.ad_details && data.ad_details.aaa_info) {\n    aaa_info = data.ad_details.aaa_info;\n  } else if (snap.age_country_gender_reach_breakdown) {\n    aaa_info = { age_country_gender_reach_breakdown: snap.age_country_gender_reach_breakdown };\n  }\n  \n  if (data.ad_details && data.ad_details.aaa_info && data.ad_details.aaa_info.location_audience) {\n    target_locations = data.ad_details.aaa_info.location_audience.map(l => l.name).join(', ');\n  }\n  \n  if (aaa_info && aaa_info.age_country_gender_reach_breakdown && aaa_info.age_country_gender_reach_breakdown.length > 0) {\n    eu_total_reach = aaa_info.eu_total_reach || 0;\n    \n    let countryData = aaa_info.age_country_gender_reach_breakdown.find(c => c.country === 'FR');\n    if (!countryData && aaa_info.age_country_gender_reach_breakdown.length > 0) {\n      countryData = aaa_info.age_country_gender_reach_breakdown[0];\n    }\n    \n    if (countryData && countryData.age_gender_breakdowns && countryData.age_gender_breakdowns.length > 0) {\n      let maxReach = 0;\n      let maxGender = \"All\";\n      \n      for (const breakdown of countryData.age_gender_breakdowns) {\n        const totalReach = (breakdown.male || 0) + (breakdown.female || 0) + (breakdown.unknown || 0);\n        if (totalReach > maxReach) {\n          maxReach = totalReach;\n          dominant_age_range = breakdown.age_range;\n          const femaleReach = breakdown.female || 0;\n          const maleReach = breakdown.male || 0;\n          if (femaleReach > maleReach) maxGender = \"female\";\n          else if (maleReach > femaleReach) maxGender = \"male\";\n          else maxGender = \"All\";\n        }\n      }\n      dominant_gender = maxGender;\n      age_gender_breakdown = countryData.age_gender_breakdowns\n        .map(b => `${b.age_range}: M=${b.male||0} F=${b.female||0}`)\n        .join(\" | \");\n    }\n  }\n  \n  let videoUrl = data.videoUrl || (snap.videos && snap.videos[0] ? (snap.videos[0].video_hd_url || snap.videos[0].video_sd_url) : null);\n  if (!videoUrl && snap.cards && snap.cards.length > 0) {\n    for (const card of snap.cards) {\n      if (card.videoHdUrl || card.videoSdUrl) {\n        videoUrl = card.videoHdUrl || card.videoSdUrl;\n        break;\n      }\n    }\n  }\n  \n  const hasVideo = !!videoUrl;\n  \n  const startDate = new Date(data.adRunStartDate || data.startDateFormatted || snap.creation_time || now);\n  const daysActive = Math.ceil(Math.abs(now - startDate) / (1000 * 60 * 60 * 24)) || 1;\n\n  let score = 0;\n  score += Math.min(daysActive * 1.5, 30);\n  score += hasVideo ? 15 : 0;\n  score += (version_count || 0) * 10;\n  score += Math.min((eu_total_reach || 0) / 50000, 20);\n\n  // AMÉLIORATION 4: Virality Score\n  const virality_score = Math.min(\n    Math.round(\n      ((eu_total_reach || 0) / 100000) * 10 +      // Reach (max 10 pts)\n      (version_count * 5) +                         // Variantes (5 pts par variante)\n      (hasVideo ? 10 : 0) +                         // Vidéo (10 pts)\n      (daysActive > 30 ? 10 : 0)                    // Durée (10 pts si > 30j)\n    ), \n    100\n  );\n\n  // META NATIVE FORM EXTRACTION\n  let native_questions_array = [];\n  let form_type = 'external_landing_page';\n  \n  if (snap.extraTexts && snap.extraTexts.length > 0) {\n    let currentQuestion = null;\n    let currentChoices = [];\n    let hasQuestions = false;\n    \n    for (const textObj of snap.extraTexts) {\n      const txt = (textObj.text || \"\").trim();\n      if (!txt) continue;\n      \n      const lower = txt.toLowerCase();\n      \n      if (lower.includes(\"conditions générales\") || lower.includes(\"politique de confidentialité\") || lower.includes(\"merci, vous avez terminé\")) {\n          if (currentQuestion) {\n            native_questions_array.push({\n              question: currentQuestion,\n              type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n              choices: currentChoices.length > 0 ? currentChoices : null\n            });\n            currentQuestion = null;\n            currentChoices = [];\n          }\n          continue;\n      }\n      \n      if (txt.endsWith('?')) {\n        hasQuestions = true;\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n        }\n        currentQuestion = txt;\n        currentChoices = [];\n      } else if (currentQuestion && ([\"OUI\", \"NON\"].includes(txt.toUpperCase()) || txt.includes('€') || lower.includes('je ne sais pas') || txt.match(/^[0-9]+.*[0-9]+$/))) {\n        currentChoices.push(txt);\n      } else if ([\"full name\", \"phone number\", \"email\", \"post code\", \"postal code\"].includes(lower)) {\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n          currentQuestion = null;\n          currentChoices = [];\n        }\n        native_questions_array.push({\n            question: txt,\n            type: 'standard_field',\n            choices: null\n        });\n        hasQuestions = true;\n      }\n    }\n    \n    if (currentQuestion) {\n      native_questions_array.push({\n        question: currentQuestion,\n        type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n        choices: currentChoices.length > 0 ? currentChoices : null\n      });\n    }\n    \n    if (hasQuestions) {\n        form_type = 'native_meta_form';\n    }\n  }\n  \n  const parsed_form_text = native_questions_array.map(q => {\n      if (q.type === 'multiple_choice') return `[Choix Multiple] ${q.question} -> Choix: ${q.choices.join(', ')}`;\n      if (q.type === 'standard_field') return `[Donnée Demandée] ${q.question}`;\n      return `[Question Ouverte] ${q.question}`;\n  }).join('\\n');\n\n  // AMÉLIORATION 5: Créer colonnes question_1 à question_15\n  const questionsObject = {};\n  for (let i = 0; i < 15; i++) {\n    const qIndex = i + 1;\n    if (i < native_questions_array.length) {\n      const q = native_questions_array[i];\n      if (q.type === 'multiple_choice') {\n        questionsObject[`question_${qIndex}`] = `[Choix Multiple] ${q.question} -> Choix: ${q.choices.join(', ')}`;\n      } else if (q.type === 'standard_field') {\n        questionsObject[`question_${qIndex}`] = `[Donnée Demandée] ${q.question}`;\n      } else {\n        questionsObject[`question_${qIndex}`] = `[Question Ouverte] ${q.question}`;\n      }\n    } else {\n      questionsObject[`question_${qIndex}`] = \"\";\n    }\n  }\n\n  processedAds.push({\n    json: {\n      ad_id: data.adArchiveID || data.id,\n      brand: data.pageName || snap.page_name || \"Inconnu\",\n      days_active: daysActive,\n      performance_score: Math.round(score),\n      \n      headline: headline,\n      body_text: body_text,\n      link_description: link_description,\n      ad_copy: ad_copy,\n      \n      visual_url: visual_url,\n      visual_urls: visual_urls_string,\n      image_count: visual_urls.length,\n      has_image: visual_urls.length > 0,\n      \n      has_variants: has_variants,\n      version_count: version_count,\n      \n      dominant_age_range: dominant_age_range,\n      dominant_gender: dominant_gender,\n      age_gender_breakdown: age_gender_breakdown,\n      eu_total_reach: eu_total_reach,\n      target_locations: target_locations,\n      \n      is_dco_ad: is_dco_ad,\n      is_data_from_cards: is_data_from_cards,\n      \n      form_type: form_type,\n      form_fields_json: form_type === 'native_meta_form' ? JSON.stringify(native_questions_array) : '',\n      form_total_fields: native_questions_array.length,\n      native_form_questions_plain: parsed_form_text,\n      \n      cta_type: data.ctaType || snap.cta_type || snap.cta_text || \"LEARN_MORE\",\n      video_url: videoUrl,\n      has_video: hasVideo,\n      website_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || \"\",\n      landing_page_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || \"\",\n      \n      // Amélioration 1: Variantes\n      // Amélioration 4: Virality Score\n      virality_score: virality_score,\n      \n      // Amélioration 5: Questions séparées\n      ...questionsObject,\n      \n      // À remplir par les nœuds IA suivants:\n      hook_type: \"\",\n      why_it_works: \"\",\n      takeaway_1: \"\",\n      takeaway_2: \"\",\n      takeaway_3: \"\",\n      exit_hook: \"\",\n      tunnel_friction_reasons_detailed: \"\"\n    }\n  });\n}\n\nreturn processedAds.sort((a, b) => b.json.performance_score - a.json.performance_score);"
+        "jsCode": "const now = new Date();\nconst out = [];\n\nconst isPlaceholder = (str) => typeof str === 'string' && str.includes('{{') && str.includes('}}');\nconst cleanText = (v) => (typeof v === 'string' ? v.trim() : '');\n\nfor (const item of $input.all()) {\n  const data = item.json || {};\n  const snap = data.snapshot || {};\n  const cards = Array.isArray(snap.cards) ? snap.cards : [];\n\n  const cardVariants = cards.map((card, idx) => {\n    const image = card.originalImageUrl || card.resizedImageUrl || card.videoPreviewImageUrl || null;\n    return {\n      index: idx + 1,\n      title: card.title || '',\n      body: card.body || '',\n      link_description: card.linkDescription || '',\n      image_url: image,\n      video_url: card.videoHdUrl || card.videoSdUrl || null,\n      cta_type: card.ctaType || ''\n    };\n  });\n\n  const variantImageUrls = cardVariants.map(v => v.image_url).filter(Boolean);\n\n  let headline = snap.title || snap.ad_title || 'Pas de titre';\n  let body_text = snap.body?.text || snap.ad_body || 'Pas de texte';\n  let link_description = snap.linkDescription || snap.link_description || '';\n\n  const is_dco_ad = isPlaceholder(headline) || isPlaceholder(body_text) || isPlaceholder(link_description);\n  let is_data_from_cards = false;\n\n  if (is_dco_ad && cardVariants.length > 0) {\n    const first = cardVariants[0];\n    headline = first.title || first.body || headline;\n    body_text = first.body || body_text;\n    link_description = first.link_description || link_description;\n    is_data_from_cards = true;\n  }\n\n  const visualUrls = [];\n\n  if (Array.isArray(snap.images)) {\n    for (const img of snap.images) {\n      const url = img?.originalImageUrl || img?.resizedImageUrl || (img?.imageCrops?.[0]?.originalImageUrl) || null;\n      if (url) visualUrls.push(url);\n    }\n  }\n\n  for (const u of variantImageUrls) {\n    if (!visualUrls.includes(u)) visualUrls.push(u);\n  }\n\n  if (visualUrls.length === 0) {\n    const fallbackUrl = data.imageUrl || snap.cards?.[0]?.originalImageUrl || data.ad_snapshot_url || null;\n    if (fallbackUrl) visualUrls.push(fallbackUrl);\n  }\n\n  const has_variants = visualUrls.length > 1 || cardVariants.length > 1 || !!data.adHasMultipleVersions || !!snap.adHasMultipleVersions;\n  const version_count = Math.max(visualUrls.length, cardVariants.length, data.versionCount || 0, snap.versionCount || 0, has_variants ? 2 : 1);\n\n  // Audience\n  let dominant_age_range = 'Unknown';\n  let dominant_gender = 'All';\n  let age_gender_breakdown = '';\n  let eu_total_reach = 0;\n  let target_locations = 'Inconnu';\n\n  const aaa_info = data.ad_details?.aaa_info || (snap.age_country_gender_reach_breakdown ? { age_country_gender_reach_breakdown: snap.age_country_gender_reach_breakdown } : null);\n\n  if (data.ad_details?.aaa_info?.location_audience) {\n    target_locations = data.ad_details.aaa_info.location_audience.map((l) => l.name).join(', ');\n  }\n\n  if (aaa_info?.age_country_gender_reach_breakdown?.length) {\n    eu_total_reach = aaa_info.eu_total_reach || 0;\n    let countryData = aaa_info.age_country_gender_reach_breakdown.find((c) => c.country === 'FR') || aaa_info.age_country_gender_reach_breakdown[0];\n    if (countryData?.age_gender_breakdowns?.length) {\n      let maxReach = 0;\n      let maxGender = 'All';\n      for (const b of countryData.age_gender_breakdowns) {\n        const total = (b.male || 0) + (b.female || 0) + (b.unknown || 0);\n        if (total > maxReach) {\n          maxReach = total;\n          dominant_age_range = b.age_range;\n          const f = b.female || 0;\n          const m = b.male || 0;\n          maxGender = f > m ? 'female' : (m > f ? 'male' : 'All');\n        }\n      }\n      dominant_gender = maxGender;\n      age_gender_breakdown = countryData.age_gender_breakdowns.map((b) => `${b.age_range}: M=${b.male||0} F=${b.female||0}`).join(' | ');\n    }\n  }\n\n  let videoUrl = data.videoUrl || snap.videos?.[0]?.video_hd_url || snap.videos?.[0]?.video_sd_url || null;\n  if (!videoUrl) {\n    for (const v of cardVariants) {\n      if (v.video_url) { videoUrl = v.video_url; break; }\n    }\n  }\n\n  const hasVideo = !!videoUrl;\n  const startDate = new Date(data.adRunStartDate || data.startDateFormatted || snap.creation_time || now);\n  const daysActive = Math.ceil(Math.abs(now - startDate) / (1000 * 60 * 60 * 24)) || 1;\n\n  let score = 0;\n  score += Math.min(daysActive * 1.5, 30);\n  score += hasVideo ? 15 : 0;\n  score += (version_count || 0) * 10;\n  score += Math.min((eu_total_reach || 0) / 50000, 20);\n\n  const virality_score = Math.min(Math.round(((eu_total_reach || 0) / 100000) * 10 + (version_count * 5) + (hasVideo ? 10 : 0) + (daysActive > 30 ? 10 : 0)), 100);\n\n  // Native form extraction from extraTexts (intro + questions + final promise)\n  const extraTexts = (Array.isArray(snap.extraTexts) ? snap.extraTexts : [])\n    .map((x) => cleanText(x?.text))\n    .filter(Boolean);\n\n  let form_type = 'external_landing_page';\n  let native_questions_array = [];\n  let landing_page_intro_text = '';\n  let native_landing_page_promise = '';\n\n  if (extraTexts.length > 0) {\n    const firstQuestionIndex = extraTexts.findIndex((t) => t.endsWith('?'));\n    if (firstQuestionIndex > 0) {\n      landing_page_intro_text = extraTexts.slice(0, firstQuestionIndex).join(' ').trim();\n    } else if (firstQuestionIndex === -1 && extraTexts.length > 0) {\n      landing_page_intro_text = extraTexts[0];\n    }\n\n    // Build native promise from the tail section after questions (keeps full final message)\n    const lastQuestionIndex = (() => {\n      for (let i = extraTexts.length - 1; i >= 0; i--) {\n        if (extraTexts[i].endsWith('?')) return i;\n      }\n      return -1;\n    })();\n\n    const tailTexts = lastQuestionIndex >= 0\n      ? extraTexts.slice(lastQuestionIndex + 1).filter(Boolean)\n      : extraTexts.filter((t) => !t.endsWith('?'));\n\n    if (tailTexts.length > 0) {\n      native_landing_page_promise = tailTexts.join(' ').trim();\n    }\n\n    let currentQuestion = null;\n    let currentChoices = [];\n    let hasQuestions = false;\n\n    for (const txt of extraTexts) {\n      const lower = txt.toLowerCase();\n\n      if (lower.includes('conditions g?n?rales') || lower.includes('politique de confidentialit?')) {\n        continue;\n      }\n\n      if (txt.endsWith('?')) {\n        hasQuestions = true;\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n        }\n        currentQuestion = txt;\n        currentChoices = [];\n        continue;\n      }\n\n      if (currentQuestion && (['OUI', 'NON'].includes(txt.toUpperCase()) || txt.includes('€') || lower.includes('je ne sais pas') || /^[0-9]+.*[0-9]+$/.test(txt))) {\n        currentChoices.push(txt);\n        continue;\n      }\n\n      if (['full name', 'phone number', 'email', 'post code', 'postal code'].includes(lower)) {\n        hasQuestions = true;\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n          currentQuestion = null;\n          currentChoices = [];\n        }\n        native_questions_array.push({ question: txt, type: 'standard_field', choices: null });\n      }\n    }\n\n    if (currentQuestion) {\n      native_questions_array.push({\n        question: currentQuestion,\n        type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n        choices: currentChoices.length > 0 ? currentChoices : null\n      });\n    }\n\n    if (native_questions_array.length > 0) {\n      form_type = 'native_meta_form';\n    }\n  }\n\n  const parsed_form_text = native_questions_array.map((q) => {\n    if (q.type === 'multiple_choice') return `[Choix Multiple] ${q.question} -> Choix: ${(q.choices || []).join(', ')}`;\n    if (q.type === 'standard_field') return `[Donn?e Demand?e] ${q.question}`;\n    return `[Question Ouverte] ${q.question}`;\n  }).join('\n');\n\n  const questionsObject = {};\n  for (let i = 0; i < 15; i++) {\n    const q = native_questions_array[i];\n    const k = `question_${i+1}`;\n    if (!q) { questionsObject[k] = ''; continue; }\n    if (q.type === 'multiple_choice') questionsObject[k] = `[Choix Multiple] ${q.question} -> Choix: ${(q.choices || []).join(', ')}`;\n    else if (q.type === 'standard_field') questionsObject[k] = `[Donn?e Demand?e] ${q.question}`;\n    else questionsObject[k] = `[Question Ouverte] ${q.question}`;\n  }\n\n  const variantFlat = {};\n  for (let i = 0; i < 5; i++) {\n    const v = cardVariants[i] || {};\n    const idx = i + 1;\n    variantFlat[`variant_url_${idx}`] = v.image_url || '';\n    variantFlat[`variant_title_${idx}`] = v.title || '';\n    variantFlat[`variant_copy_${idx}`] = v.body || '';\n  }\n\n  out.push({\n    json: {\n      ad_id: data.adArchiveID || data.id,\n      brand: data.pageName || snap.page_name || 'Inconnu',\n      days_active: daysActive,\n      performance_score: Math.round(score),\n\n      headline,\n      body_text,\n      link_description,\n      ad_copy: body_text,\n\n      visual_url: visualUrls[0] || null,\n      visual_urls: visualUrls.join(' | '),\n      visual_urls_json: JSON.stringify(visualUrls),\n      image_count: visualUrls.length,\n      has_image: visualUrls.length > 0,\n\n      has_variants,\n      version_count,\n      variant_count_from_cards: cardVariants.length,\n      variant_details_json: JSON.stringify(cardVariants),\n      ...variantFlat,\n\n      dominant_age_range,\n      dominant_gender,\n      age_gender_breakdown,\n      eu_total_reach,\n      target_locations,\n\n      is_dco_ad,\n      is_data_from_cards,\n\n      form_type,\n      form_fields_json: form_type === 'native_meta_form' ? JSON.stringify(native_questions_array) : '',\n      form_total_fields: native_questions_array.length,\n      native_form_questions_plain: parsed_form_text,\n      landing_page_intro_text,\n      landing_page_promise: form_type === 'native_meta_form' ? native_landing_page_promise : '',\n\n      cta_type: data.ctaType || snap.cta_type || snap.cta_text || 'LEARN_MORE',\n      video_url: videoUrl,\n      has_video: hasVideo,\n      website_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || '',\n      landing_page_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || '',\n\n      virality_score,\n      ...questionsObject,\n\n      hook_type: '',\n      why_it_works: '',\n      takeaway_1: '',\n      takeaway_2: '',\n      takeaway_3: '',\n      exit_hook: '',\n      tunnel_friction_reasons_detailed: ''\n    }\n  });\n}\n\n// Deduplicate by ad_id and keep best-scoring item\nconst dedup = new Map();\nfor (const item of out) {\n  const key = item.json.ad_id || `${item.json.brand || 'unknown'}-${item.json.headline || ''}`;\n  const existing = dedup.get(key);\n  if (!existing || (item.json.performance_score || 0) > (existing.json.performance_score || 0)) {\n    dedup.set(key, item);\n  }\n}\n\nreturn Array.from(dedup.values()).sort((a, b) => (b.json.performance_score || 0) - (a.json.performance_score || 0));"
       },
       "id": "e2e3e98e-cb54-4c3a-8028-09e2da69b2a9",
-      "name": "📊 Process & Score (Étape 1 Complete)",
+      "name": "Process & Score (Etape 1 Complete)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -78,7 +78,7 @@
         "maxItems": "={{ $input.all().length }}"
       },
       "id": "1962159b-edca-4bbb-ac5c-0acba99a7fcf",
-      "name": "🏆 Top 3 Ads",
+      "name": "Top 3 Ads",
       "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
@@ -129,7 +129,7 @@
           "mode": "list",
           "cachedResultName": "models/gemini-2.5-flash"
         },
-        "text": "Analyse cette vidéo de publicité Mutuelle Santé (Lead Gen).\nSois un expert en acquisition vidéo.\n\n1. Les 3 premières secondes (Le Hook) : Comment le créateur capte-t-il l'attention tout de suite ? (Problème, Chiffre choc, Question ?)\n2. L'Argumentaire (L'angle) : Quel est le principal argument ? (Ex: Loi Lemoine, Économie de 300€, Reste à charge 0, Mutuelle Senior)\n3. Crédibilité : Le présentateur ou le script inspirent-ils confiance ? (Score 1-10)\n4. L'Appel à l'Action (CTA) : Le message pour cliquer est-il urgent et clair ?\n\nRéponds de manière concise (max 4 phrases) et donne 1 point fort et 1 point d'amélioration.",
+        "text": "Analyse cette vidÃ©o de publicitÃ© Mutuelle SantÃ© (Lead Gen).\nSois un expert en acquisition vidÃ©o.\n\n1. Les 3 premiÃ¨res secondes (Le Hook) : Comment le crÃ©ateur capte-t-il l'attention tout de suite ? (ProblÃ¨me, Chiffre choc, Question ?)\n2. L'Argumentaire (L'angle) : Quel est le principal argument ? (Ex: Loi Lemoine, Ã‰conomie de 300â‚¬, Reste Ã  charge 0, Mutuelle Senior)\n3. CrÃ©dibilitÃ© : Le prÃ©sentateur ou le script inspirent-ils confiance ? (Score 1-10)\n4. L'Appel Ã  l'Action (CTA) : Le message pour cliquer est-il urgent et clair ?\n\nRÃ©ponds de maniÃ¨re concise (max 4 phrases) et donne 1 point fort et 1 point d'amÃ©lioration.",
         "options": {}
       },
       "id": "681d1833-34f7-45d3-a344-cbefba954b08",
@@ -189,7 +189,7 @@
           "value": "models/gemini-2.5-flash",
           "mode": "list"
         },
-        "text": "Analyse ce visuel de publicité pour Mutuelle Santé (Lead Gen).\nSois un expert en marketing direct et UX.\n\n1. Hook Visuel (Ce qui arrête le scroll): L'image utilise-t-elle des visages (empathie), des gros textes (bénéfices) ou des graphiques (preuves) ? Est-ce efficace ?\n2. Couleurs & Psychologie : Est-ce que cela fait pro/rassurant (bleu/vert) ou alerte/urgent (rouge/orange) ?\n3. Lisibilité du texte : Les promesses sur l'image sont-elles claires, même sur mobile ?\n4. Score de confiance (1-10) : L'image fait-elle institutionnelle ou trop \"cheap/arnaque\" ?\n\nRéponds de manière concise (max 4 phrases) et donne 1 point fort et 1 point d'amélioration.",
+        "text": "Analyse ce visuel de publicitÃ© pour Mutuelle SantÃ© (Lead Gen).\nSois un expert en marketing direct et UX.\n\n1. Hook Visuel (Ce qui arrÃªte le scroll): L'image utilise-t-elle des visages (empathie), des gros textes (bÃ©nÃ©fices) ou des graphiques (preuves) ? Est-ce efficace ?\n2. Couleurs & Psychologie : Est-ce que cela fait pro/rassurant (bleu/vert) ou alerte/urgent (rouge/orange) ?\n3. LisibilitÃ© du texte : Les promesses sur l'image sont-elles claires, mÃªme sur mobile ?\n4. Score de confiance (1-10) : L'image fait-elle institutionnelle ou trop \"cheap/arnaque\" ?\n\nRÃ©ponds de maniÃ¨re concise (max 4 phrases) et donne 1 point fort et 1 point d'amÃ©lioration.",
         "imageUrls": "={{ $json.visual_url }}",
         "simplify": false,
         "options": {}
@@ -212,14 +212,15 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "Tu es un consultant expert en marketing d'assurance santé. Analyse cette publicité Facebook/Meta et retourne UNIQUEMENT un JSON valide.\n\n**AD DATA**\nBrand: {{ $json.brand }}\nDays Active: {{ $json.days_active }}\nTitle: {{ $json.headline }}\nBody: {{ $json.body_text }}\nLink Description: {{ $json.link_description }}\nVariants: {{ $json.version_count }}\nFormulaire Natif Hook Brut: {{ $json.native_form_hook || 'N/A' }}\nQuestions du Formulaire: {{ $json.native_form_questions_plain || 'N/A' }}\n\n**VISUAL ANALYSIS**\nVidéo: {{ $json.video_analysis || \"Pas de données video\" }}\nImage: {{ $json.image_analysis || \"Pas de données image\" }}\n\n**INSTRUCTIONS D'ANALYSE**\n1. **Hook Type**: Quel est l'angle principal ? (Urgence, Économie, Autorité, Loi Lemoine, Sénior...)\n2. **Why it works**: Pourquoi cette pub fonctionne-t-elle psychologiquement auprès des mutuelles santé ?\n3. **Takeaways**: Extrais 3 secrets/insights clés pour répliquer le succès (takeaway_1, takeaway_2, takeaway_3).\n4. **Hook de Sortie**: Formule l'appel à l'action / la promesse finale (ex: \"Vérifiez vos droits en 30s\", ou bien base-toi sur \"Formulaire Natif Hook Brut\").\n5. **Tunnel Friction Reasons**: Analyse détaillée de la friction du formulaire. Y a-t-il trop de questions ? Les données demandées sont-elles sensibles (ex: téléphone = haute friction) ?\n6. **Recommendations**: Comment améliorer ou durcir le tunnel pour obtenir des prospects plus chauds et moins de déchets ?\n\n**RETURN THIS EXACT JSON STRUCTURE (ONLY JSON, NO MARKDOWN, NO ```):**\n{\n  \"hook_type\": \"string (ex: Économie immédiate)\",\n  \"why_it_works\": \"string (ex: Touche à la peur de payer trop cher)\",\n  \"takeaway_1\": \"string (ex: Utiliser des couleurs bleues rassurantes)\",\n  \"takeaway_2\": \"string (ex: Promesse chiffrée de 300€)\",\n  \"takeaway_3\": \"string (ex: Ciblage explicite +55 ans)\",\n  \"hook_de_sortie\": \"string (ex: Calculez votre devis sans engagement)\",\n  \"tunnel_friction_reasons\": \"string (ex: Friction moyenne : 6 questions mais demande le numéro de téléphone)\",\n  \"tunnel_recommendations\": \"string (ex: Remplacer le champ téléphone obligatoire par un SMS OTP pour filtrer les faux numéros)\"\n}\n\nCRITICAL INSTRUCTION: You MUST output ONLY the raw JSON object. Do NOT add markdown blocks (```json). Do NOT add conversational text like 'Here is the JSON'. The very first character of your response MUST be `{` and the very last MUST be `}`.",
+        "text": "Tu es un consultant expert en marketing d'assurance santÃ©. Analyse cette publicitÃ© Facebook/Meta et retourne UNIQUEMENT un JSON valide.\n\n**AD DATA**\nBrand: {{ $json.brand }}\nDays Active: {{ $json.days_active }}\nTitle: {{ $json.headline }}\nBody: {{ $json.body_text }}\nLink Description: {{ $json.link_description }}\nVariants: {{ $json.version_count }}\nFormulaire Natif Hook Brut: {{ $json.native_form_hook || 'N/A' }}\nQuestions du Formulaire: {{ $json.native_form_questions_plain || 'N/A' }}\n\n**VISUAL ANALYSIS**\nVidÃ©o: {{ $json.video_analysis || \"Pas de donnÃ©es video\" }}\nImage: {{ $json.image_analysis || \"Pas de donnÃ©es image\" }}\n\n**INSTRUCTIONS D'ANALYSE**\n1. **Hook Type**: Quel est l'angle principal ? (Urgence, Ã‰conomie, AutoritÃ©, Loi Lemoine, SÃ©nior...)\n2. **Why it works**: Pourquoi cette pub fonctionne-t-elle psychologiquement auprÃ¨s des mutuelles santÃ© ?\n3. **Takeaways**: Extrais 3 secrets/insights clÃ©s pour rÃ©pliquer le succÃ¨s (takeaway_1, takeaway_2, takeaway_3).\n4. **Hook de Sortie**: Formule l'appel Ã  l'action / la promesse finale (ex: \"VÃ©rifiez vos droits en 30s\", ou bien base-toi sur \"Formulaire Natif Hook Brut\").\n5. **Tunnel Friction Reasons**: Analyse dÃ©taillÃ©e de la friction du formulaire. Y a-t-il trop de questions ? Les donnÃ©es demandÃ©es sont-elles sensibles (ex: tÃ©lÃ©phone = haute friction) ?\n6. **Recommendations**: Comment amÃ©liorer ou durcir le tunnel pour obtenir des prospects plus chauds et moins de dÃ©chets ?\n\n**RETURN THIS EXACT JSON STRUCTURE (ONLY JSON, NO MARKDOWN, NO ```):**\n{\n  \"hook_type\": \"string (ex: Ã‰conomie immÃ©diate)\",\n  \"why_it_works\": \"string (ex: Touche Ã  la peur de payer trop cher)\",\n  \"takeaway_1\": \"string (ex: Utiliser des couleurs bleues rassurantes)\",\n  \"takeaway_2\": \"string (ex: Promesse chiffrÃ©e de 300â‚¬)\",\n  \"takeaway_3\": \"string (ex: Ciblage explicite +55 ans)\",\n  \"hook_de_sortie\": \"string (ex: Calculez votre devis sans engagement)\",\n  \"tunnel_friction_reasons\": \"string (ex: Friction moyenne : 6 questions mais demande le numÃ©ro de tÃ©lÃ©phone)\",\n  \"tunnel_recommendations\": \"string (ex: Remplacer le champ tÃ©lÃ©phone obligatoire par un SMS OTP pour filtrer les faux numÃ©ros)\"\n}\n\nCRITICAL INSTRUCTION: You MUST output ONLY the raw JSON object. Do NOT add markdown blocks (```json). Do NOT add conversational text like 'Here is the JSON'. The very first character of your response MUST be `{` and the very last MUST be `}`.",
         "messages": {
           "messageValues": [
             {
-              "message": "Tu es un consultant expert en marketing d'assurance santé. Ton but est d'aider un courtier à identifier les meilleures publicités pour générer des leads qualifiés."
+              "message": "Tu es un consultant expert en marketing d'assurance santÃ©. Ton but est d'aider un courtier Ã  identifier les meilleures publicitÃ©s pour gÃ©nÃ©rer des leads qualifiÃ©s."
             }
           ]
-        }
+        },
+        "hasOutputParser": true
       },
       "id": "81003cf5-d386-47cd-8d55-9e270824ad7f",
       "name": "Generate Executive Summary",
@@ -268,7 +269,7 @@
         "jsCode": "const items = $input.all();\n\nconst results = items.map((item) => {\n  const current = item.json || {};\n  const formType = current.form_type || 'external_landing_page';\n  const landingPageUrl = current.landing_page_url || current.website_url || current.linkUrl || '';\n  const isNative =\n    formType === 'native_meta_form' ||\n    landingPageUrl.includes('fb.me') ||\n    landingPageUrl.includes('facebook.com/lead');\n\n  if (isNative) {\n    const nativeQuestions = (current.native_form_questions_plain || '').toLowerCase();\n    return {\n      json: {\n        ...current,\n        form_type: 'native_meta_form',\n        landing_page_title: current.landing_page_title || 'Formulaire natif Meta',\n        landing_page_subtitle: current.landing_page_subtitle || '',\n        landing_page_promise: current.landing_page_promise || 'G?n?r? via Facebook',\n        form_required_fields: current.form_required_fields ?? current.form_total_fields ?? 0,\n        form_optional_fields: current.form_optional_fields ?? 0,\n        form_has_email: current.form_has_email ?? nativeQuestions.includes('email'),\n        email_field_name: current.email_field_name || 'email',\n        form_has_phone: current.form_has_phone ?? (nativeQuestions.includes('phone') || nativeQuestions.includes('t?l?phone')),\n        phone_field_name: current.phone_field_name || 'phone',\n        form_has_birth_date: current.form_has_birth_date ?? false,\n        birth_date_field_name: current.birth_date_field_name || '',\n        form_has_postal_code: current.form_has_postal_code ?? nativeQuestions.includes('post code'),\n        postal_code_field_name: current.postal_code_field_name || 'postal_code',\n        form_has_social_status: current.form_has_social_status ?? false,\n        social_status_field_name: current.social_status_field_name || '',\n        cta_text: current.cta_text || 'Envoyer',\n        estimated_completion_time: current.estimated_completion_time || '1 min',\n        skip_html_fetch: true,\n        tunnel_quality_score: current.tunnel_quality_score ?? 5,\n        tunnel_friction_level: current.tunnel_friction_level || 'low',\n        tunnel_friction_reasons: current.tunnel_friction_reasons || 'native_form_no_friction',\n        tunnel_recommendations: current.tunnel_recommendations || 'use_webhook_or_graph_api',\n        tunnel_estimated_conversion_rate: current.tunnel_estimated_conversion_rate ?? 40\n      }\n    };\n  }\n\n  return {\n    json: {\n      ...current,\n      form_type: 'external_landing_page',\n      landing_page_url: landingPageUrl,\n      skip_html_fetch: !landingPageUrl\n    }\n  };\n});\n\nreturn results;"
       },
       "id": "1d41130a-b645-4f30-8896-b92f42e22284",
-      "name": "📄 Prepare Landing Page Extraction",
+      "name": "Prepare Landing Page Extraction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -285,7 +286,7 @@
         }
       },
       "id": "0edfa5dc-670f-4751-a958-cf596c182700",
-      "name": "🌐 Fetch Landing Page HTML",
+      "name": "Fetch Landing Page HTML",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
@@ -299,7 +300,7 @@
         "jsCode": "const currentItems = $input.all();\n\nlet checkNativeItems = [];\ntry {\n  checkNativeItems = $('Check Native Form').all(1);\n} catch (_) {\n  try {\n    checkNativeItems = $('Check Native Form').all();\n  } catch (_) {\n    checkNativeItems = [];\n  }\n}\n\nconst extractText = (m, fallback) => (m ? m[1].replace(/<[^>]*>?/gm, '').trim() : fallback);\n\nconst results = currentItems.map((item, index) => {\n  const current = item.json || {};\n  const pairedIndex = item.pairedItem?.item ?? index;\n  const upstream = checkNativeItems[pairedIndex]?.json || current;\n\n  const rawHtml = current.data ?? current.body ?? '';\n  const html = typeof rawHtml === 'string' ? rawHtml : String(rawHtml || '');\n\n  if (!html && upstream.skip_html_fetch !== true) {\n    return {\n      json: {\n        ...upstream,\n        landing_page_title: 'Erreur: Page non accessible',\n        form_type: 'error',\n        form_fields_json: '',\n        form_total_fields: 0,\n        form_required_fields: 0,\n        form_optional_fields: 0,\n        form_has_email: false,\n        email_field_name: '',\n        form_has_phone: false,\n        phone_field_name: '',\n        form_has_birth_date: false,\n        birth_date_field_name: '',\n        form_has_postal_code: false,\n        postal_code_field_name: '',\n        form_has_social_status: false,\n        social_status_field_name: '',\n        cta_text: '',\n        estimated_completion_time: ''\n      }\n    };\n  }\n\n  const h1Match = html.match(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/i);\n  const h2Match = html.match(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/i);\n  const pMatch = html.match(/<p[^>]*>([\\s\\S]*?)<\\/p>/i);\n\n  const landing_page_title = extractText(h1Match, 'Pas de titre');\n  const landing_page_subtitle = extractText(h2Match, '');\n  const landing_page_promise = extractText(pMatch, '').substring(0, 150);\n\n  const formFields = [];\n  for (const m of html.matchAll(/<input[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    const t = (m[0].match(/type=[\"']([^\"']*)[\"']/i) || [, 'text'])[1].toLowerCase();\n    if (n && t !== 'hidden' && t !== 'submit') {\n      formFields.push({ name: n, type: t, required: /required/i.test(m[0]) });\n    }\n  }\n\n  for (const m of html.matchAll(/<select[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    if (n) {\n      formFields.push({ name: n, type: 'select', required: /required/i.test(m[0]) });\n    }\n  }\n\n  const flags = { email: false, phone: false, birth: false, postal: false, social: false };\n  const names = { email: '', phone: '', birth: '', postal: '', social: '' };\n\n  formFields.forEach((f) => {\n    const n = (f.name || '').toLowerCase();\n    if (!flags.email && (n.includes('email') || f.type === 'email' || n.includes('mail'))) {\n      flags.email = true;\n      names.email = f.name;\n    }\n    if (!flags.phone && (n.includes('phone') || n.includes('tel') || f.type === 'tel')) {\n      flags.phone = true;\n      names.phone = f.name;\n    }\n    if (!flags.birth && (n.includes('birth') || n.includes('date') || n.includes('age') || n.includes('naissance'))) {\n      flags.birth = true;\n      names.birth = f.name;\n    }\n    if (!flags.postal && (n.includes('postal') || n.includes('code') || n.includes('zip') || n.includes('cp'))) {\n      flags.postal = true;\n      names.postal = f.name;\n    }\n    if (!flags.social && (n.includes('status') || n.includes('regime') || n.includes('secu') || n.includes('situation'))) {\n      flags.social = true;\n      names.social = f.name;\n    }\n  });\n\n  const ctaMatch =\n    html.match(/<button[^>]*>([\\s\\S]*?)<\\/button>/i) ||\n    html.match(/<input[^>]*type=[\"']submit[\"'][^>]*value=[\"']([^\"']*)[\"']/i);\n\n  let final_form_type = upstream.form_type || 'external_landing_page';\n  if (html.includes('meta.com') && final_form_type !== 'native_meta_form') {\n    final_form_type = 'native_meta_form';\n  }\n\n  const requiredCount = formFields.filter((f) => f.required).length;\n\n  return {\n    json: {\n      ...upstream,\n      landing_page_title: upstream.landing_page_title || landing_page_title,\n      landing_page_subtitle: upstream.landing_page_subtitle || landing_page_subtitle,\n      landing_page_promise: upstream.landing_page_promise || landing_page_promise,\n      form_type: final_form_type,\n      form_fields_json: upstream.form_fields_json || JSON.stringify(formFields),\n      form_total_fields: upstream.form_total_fields ?? formFields.length,\n      form_required_fields: upstream.form_required_fields ?? requiredCount,\n      form_optional_fields: upstream.form_optional_fields ?? (formFields.length - requiredCount),\n      form_has_email: upstream.form_has_email ?? flags.email,\n      email_field_name: upstream.email_field_name || names.email,\n      form_has_phone: upstream.form_has_phone ?? flags.phone,\n      phone_field_name: upstream.phone_field_name || names.phone,\n      form_has_birth_date: upstream.form_has_birth_date ?? flags.birth,\n      birth_date_field_name: upstream.birth_date_field_name || names.birth,\n      form_has_postal_code: upstream.form_has_postal_code ?? flags.postal,\n      postal_code_field_name: upstream.postal_code_field_name || names.postal,\n      form_has_social_status: upstream.form_has_social_status ?? flags.social,\n      social_status_field_name: upstream.social_status_field_name || names.social,\n      cta_text: upstream.cta_text || extractText(ctaMatch, 'Envoyer'),\n      estimated_completion_time: upstream.estimated_completion_time || `${Math.round(formFields.length * 0.5 + 0.5)} min`\n    }\n  };\n});\n\nreturn results;"
       },
       "id": "27a441cc-506b-45c4-9741-c9ed850792e2",
-      "name": "🔍 Parse Landing Page Content",
+      "name": "Parse Landing Page Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -310,18 +311,18 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "Tu es un expert mondial en optimisation de tunnels de conversion (CRO) et génération de leads (Assurance/Mutuelle Santé).\n\nOn vient de scraper les données du formulaire (ou de la Landing Page) après le clic sur la publicité.\n\n**DONNÉES DU TUNNEL À ANALYSER**\nTitre de la page: {{ $json.landing_page_title }}\nPromesse de la page: {{ $json.landing_page_promise }}\nType de formulaire: {{ $json.form_type }} (native_meta = directement sur facebook/instagram, external_landing_page = site web)\nTotal des champs: {{ $json.form_total_fields }}\nChamps obligatoires: {{ $json.form_required_fields }}\nDemande un Email ? {{ $json.form_has_email }}\nDemande un Téléphone ? {{ $json.form_has_phone }}\nDemande la Date de naissance/Âge ? {{ $json.form_has_birth_date }}\nDemande le Code Postal ? {{ $json.form_has_postal_code }}\nDemande le Régime Social / Situation ? {{ $json.form_has_social_status }}\nTexte du Bouton (CTA): {{ $json.cta_text }}\nTemps d'inscription estimé: {{ $json.estimated_completion_time }}\n\n**RÈGLES D'ANALYSE (Le \"Deep Dive\") SPÉCIAL LEAD MUTUELLE**\n1. RÈGLE D'OR : En Mutuelle, OBTENIR LE NUMÉRO DE TÉLÉPHONE EST OBLIGATOIRE ET VITAL pour vendre au prospect. Le fait de demander le téléphone N'EST PAS UNE FRICTION ERREUR, c'est le but même du formulaire ! Ne baisse pas la note si le téléphone est demandé.\n2. Un formulaire natif Meta sans question qualifiante a de super taux de clics (25%-45%) mais produit des leads souvent injoignables. Il faut recommander de rajouter 1 ou 2 questions qualifiantes (ex: Quel est l'âge ou le régime) pour filtrer les curieux.\n3. Une landing page externe avec beaucoup de champs au début fait fuir. Recommande un tunnel \"Multi-step\" (une question simple d'abord, le numéro de téléphone tout à la fin) pour maximiser les conversions.\n4. L'alignement de la promesse (Si la pub promet \"Devis Rapide\", le bouton final ne doit pas contredire la promesse).\n\n**GÉNÈRE TON ANALYSE STRICTEMENT SOUS CE FORMAT JSON**\n- tunnel_quality_score (De 1 à 10 : 10 = formulaire optimisé pour un lead mutuelle joignable)\n- tunnel_friction_level (\"low\", \"medium\", \"high\")\n- tunnel_friction_reasons (Array de chaînes courtes JSON : ex: [\"long_single_page_form\"])\n- tunnel_recommendations (Array de recommandations courtes JSON : ex: [\"use_multi_step_strategy\", \"add_trust_badge_under_phone\"])\n- tunnel_estimated_conversion_rate (Un nombre entier théorique représentant le pourcentage de conversion, ex: 15)\n\nRéponds UNIQUEMENT avec le JSON valide, sans balises javascript ni markdown.\n\nCRITICAL INSTRUCTION: You MUST output ONLY the raw JSON object. Do NOT add markdown blocks (```json). Do NOT add conversational text like 'Here is the JSON'. The very first character of your response MUST be `{` and the very last MUST be `}`.",
+        "text": "Tu es un expert mondial en optimisation de tunnels de conversion (CRO) et gÃ©nÃ©ration de leads (Assurance/Mutuelle SantÃ©).\n\nOn vient de scraper les donnÃ©es du formulaire (ou de la Landing Page) aprÃ¨s le clic sur la publicitÃ©.\n\n**DONNÃ‰ES DU TUNNEL Ã€ ANALYSER**\nTitre de la page: {{ $json.landing_page_title }}\nPromesse de la page: {{ $json.landing_page_promise }}\nType de formulaire: {{ $json.form_type }} (native_meta = directement sur facebook/instagram, external_landing_page = site web)\nTotal des champs: {{ $json.form_total_fields }}\nChamps obligatoires: {{ $json.form_required_fields }}\nDemande un Email ? {{ $json.form_has_email }}\nDemande un TÃ©lÃ©phone ? {{ $json.form_has_phone }}\nDemande la Date de naissance/Ã‚ge ? {{ $json.form_has_birth_date }}\nDemande le Code Postal ? {{ $json.form_has_postal_code }}\nDemande le RÃ©gime Social / Situation ? {{ $json.form_has_social_status }}\nTexte du Bouton (CTA): {{ $json.cta_text }}\nTemps d'inscription estimÃ©: {{ $json.estimated_completion_time }}\n\n**RÃˆGLES D'ANALYSE (Le \"Deep Dive\") SPÃ‰CIAL LEAD MUTUELLE**\n1. RÃˆGLE D'OR : En Mutuelle, OBTENIR LE NUMÃ‰RO DE TÃ‰LÃ‰PHONE EST OBLIGATOIRE ET VITAL pour vendre au prospect. Le fait de demander le tÃ©lÃ©phone N'EST PAS UNE FRICTION ERREUR, c'est le but mÃªme du formulaire ! Ne baisse pas la note si le tÃ©lÃ©phone est demandÃ©.\n2. Un formulaire natif Meta sans question qualifiante a de super taux de clics (25%-45%) mais produit des leads souvent injoignables. Il faut recommander de rajouter 1 ou 2 questions qualifiantes (ex: Quel est l'Ã¢ge ou le rÃ©gime) pour filtrer les curieux.\n3. Une landing page externe avec beaucoup de champs au dÃ©but fait fuir. Recommande un tunnel \"Multi-step\" (une question simple d'abord, le numÃ©ro de tÃ©lÃ©phone tout Ã  la fin) pour maximiser les conversions.\n4. L'alignement de la promesse (Si la pub promet \"Devis Rapide\", le bouton final ne doit pas contredire la promesse).\n\n**GÃ‰NÃˆRE TON ANALYSE STRICTEMENT SOUS CE FORMAT JSON**\n- tunnel_quality_score (De 1 Ã  10 : 10 = formulaire optimisÃ© pour un lead mutuelle joignable)\n- tunnel_friction_level (\"low\", \"medium\", \"high\")\n- tunnel_friction_reasons (Array de chaÃ®nes courtes JSON : ex: [\"long_single_page_form\"])\n- tunnel_recommendations (Array de recommandations courtes JSON : ex: [\"use_multi_step_strategy\", \"add_trust_badge_under_phone\"])\n- tunnel_estimated_conversion_rate (Un nombre entier thÃ©orique reprÃ©sentant le pourcentage de conversion, ex: 15)\n\nRÃ©ponds UNIQUEMENT avec le JSON valide, sans balises javascript ni markdown.\n\nCRITICAL INSTRUCTION: You MUST output ONLY the raw JSON object. Do NOT add markdown blocks (```json). Do NOT add conversational text like 'Here is the JSON'. The very first character of your response MUST be `{` and the very last MUST be `}`.",
         "hasOutputParser": true,
         "messages": {
           "messageValues": [
             {
-              "message": "Tu es un consultant expert en optimisation de tunnels de conversion pour l'assurance santé."
+              "message": "Tu es un consultant expert en optimisation de tunnels de conversion pour l'assurance santÃ©."
             }
           ]
         }
       },
       "id": "7dd19e5f-8442-4f46-9705-f2431169d4bd",
-      "name": "🎯 Analyze Tunnel Quality",
+      "name": "Analyze Tunnel Quality",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
       "position": [
@@ -567,7 +568,7 @@
         "options": {}
       },
       "id": "b18a1c1b-56a0-4691-a7fb-ac7683fd411d",
-      "name": "🔀 Route by Form Type",
+      "name": "Route by Form Type",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [
@@ -1226,18 +1227,18 @@
   ],
   "pinData": {},
   "connections": {
-    "📋 Ad Analyzer Form": {
+    "Ad Analyzer Form": {
       "main": [
         [
           {
-            "node": "🔗 Build Dynamic URL",
+            "node": "Build Dynamic URL",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "🔗 Build Dynamic URL": {
+    "Build Dynamic URL": {
       "main": [
         [
           {
@@ -1252,25 +1253,25 @@
       "main": [
         [
           {
-            "node": "📊 Process & Score (Étape 1 Complete)",
+            "node": "Process & Score (Etape 1 Complete)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "📊 Process & Score (Étape 1 Complete)": {
+    "Process & Score (Etape 1 Complete)": {
       "main": [
         [
           {
-            "node": "🏆 Top 3 Ads",
+            "node": "Top 3 Ads",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "📄 Prepare Landing Page Extraction": {
+    "Prepare Landing Page Extraction": {
       "main": [
         [
           {
@@ -1281,22 +1282,22 @@
         ]
       ]
     },
-    "🌐 Fetch Landing Page HTML": {
+    "Fetch Landing Page HTML": {
       "main": [
         [
           {
-            "node": "🔍 Parse Landing Page Content",
+            "node": "Parse Landing Page Content",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "🔍 Parse Landing Page Content": {
+    "Parse Landing Page Content": {
       "main": [
         [
           {
-            "node": "🎯 Analyze Tunnel Quality",
+            "node": "Analyze Tunnel Quality",
             "type": "main",
             "index": 0
           }
@@ -1329,14 +1330,14 @@
       "ai_languageModel": [
         [
           {
-            "node": "🎯 Analyze Tunnel Quality",
+            "node": "Analyze Tunnel Quality",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "🎯 Analyze Tunnel Quality": {
+    "Analyze Tunnel Quality": {
       "main": [
         [
           {
@@ -1351,9 +1352,9 @@
       "main": [
         [
           {
-            "node": "Merge Form Data",
+            "node": "Route by Form Type",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
@@ -1362,43 +1363,33 @@
       "main": [
         [
           {
-            "node": "Merge Form Data",
+            "node": "Route by Form Type",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "🌐 Fetch Landing Page HTML",
+            "node": "Fetch Landing Page HTML",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Merge Form Data": {
-      "main": [
-        [
-          {
-            "node": "🔀 Route by Form Type",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
+    "Merge Form Data": {},
     "Structured Output Parser1": {
       "ai_outputParser": [
         [
           {
-            "node": "🎯 Analyze Tunnel Quality",
+            "node": "Analyze Tunnel Quality",
             "type": "ai_outputParser",
             "index": 0
           }
         ]
       ]
     },
-    "🏆 Top 3 Ads": {
+    "Top 3 Ads": {
       "main": [
         [
           {
@@ -1515,7 +1506,7 @@
       "main": [
         [
           {
-            "node": "📄 Prepare Landing Page Extraction",
+            "node": "Prepare Landing Page Extraction",
             "type": "main",
             "index": 0
           }
@@ -1544,7 +1535,7 @@
         ]
       ]
     },
-    "🔀 Route by Form Type": {
+    "Route by Form Type": {
       "main": [
         [
           {
@@ -1601,6 +1592,17 @@
           {
             "node": "Append Sheet (Native Form)",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Generate Executive Summary",
+            "type": "ai_outputParser",
             "index": 0
           }
         ]
