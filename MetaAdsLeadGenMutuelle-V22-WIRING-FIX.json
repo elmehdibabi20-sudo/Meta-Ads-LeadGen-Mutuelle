@@ -31,7 +31,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const inputData = item.json || {};\n  const searchQuery = inputData.searchQuery || 'mutuelle sant';\n  const country = inputData.Country || 'FR';\n  const baseUrl = 'https://www.facebook.com/ads/library/';\n  const params = `active_status=active&ad_type=all&country=${country}&q=${encodeURIComponent(searchQuery)}&search_type=keyword_unordered`;\n\n  return {\n    json: {\n      ...inputData,\n      search_query: searchQuery,\n      country,\n      final_url: baseUrl + params\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const inputData = item.json || {};\n  const searchQuery = inputData.searchQuery || 'mutuelle sant?';\n  const country = inputData.Country || 'FR';\n  const baseUrl = 'https://www.facebook.com/ads/library/';\n  const params = `?active_status=active&ad_type=all&country=${country}&q=${encodeURIComponent(searchQuery)}&search_type=keyword_unordered`;\n\n  return {\n    json: {\n      ...inputData,\n      search_query: searchQuery,\n      country,\n      final_url: baseUrl + params\n    }\n  };\n});"
       },
       "id": "ef0fd826-4faa-4fdb-b82d-0a26149ce188",
       "name": "Build Dynamic URL",
@@ -45,7 +45,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.apify.com/v2/acts/apify~facebook-ads-scraper/run-sync-get-dataset-itemstoken=apify_api_AyytAbbDSJYNMsiVPvFXFtuSkGHmn43neUXt",
+        "url": "https://api.apify.com/v2/acts/apify~facebook-ads-scraper/run-sync-get-dataset-items?token=apify_api_AyytAbbDSJYNMsiVPvFXFtuSkGHmn43neUXt",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"activeStatus\": \"active\",\n  \"adType\": \"all\",\n  \"isDetailsPerAd\": true,\n  \"resultsLimit\": 3,\n  \"startUrls\": [\n    {\n      \"url\": \"{{ $json.final_url }}\"\n    }\n  ]\n}",
