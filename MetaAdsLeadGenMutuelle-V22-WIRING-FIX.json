@@ -479,7 +479,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n\n  try {\n    return JSON.parse(trimmed);\n  } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try {\n      return JSON.parse(match[0]);\n    } catch (_) {\n      return null;\n    }\n  }\n};\n\nconst results = items.map((item) => {\n  const current = item.json || {};\n\n  let aiOutput = current.output ?? current;\n\n  if (typeof aiOutput === 'string') {\n    aiOutput = parsePossibleJson(aiOutput) || { raw_text: aiOutput };\n  }\n\n  if (!aiOutput || typeof aiOutput !== 'object' || Array.isArray(aiOutput)) {\n    aiOutput = { raw_output: aiOutput };\n  }\n\n  if (typeof current.text === 'string' && Object.keys(aiOutput).length === 0) {\n    const parsedFromText = parsePossibleJson(current.text);\n    if (parsedFromText && typeof parsedFromText === 'object' && !Array.isArray(parsedFromText)) {\n      aiOutput = parsedFromText;\n    }\n  }\n\n  return {\n    json: {\n      ...current,\n      output: aiOutput\n    }\n  };\n});\n\nreturn results;"
+        "jsCode": "const items = $input.all();\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n\n  try {\n    return JSON.parse(trimmed);\n  } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try {\n      return JSON.parse(match[0]);\n    } catch (_) {\n      return null;\n    }\n  }\n};\n\nconst parseOutputObject = (current) => {\n  let aiOutput = current?.output ?? current;\n\n  if (typeof aiOutput === 'string') {\n    aiOutput = parsePossibleJson(aiOutput) || { raw_text: aiOutput };\n  }\n\n  if (aiOutput && typeof aiOutput === 'object' && !Array.isArray(aiOutput) && typeof aiOutput.text === 'string') {\n    const parsedFromText = parsePossibleJson(aiOutput.text);\n    if (parsedFromText && typeof parsedFromText === 'object' && !Array.isArray(parsedFromText)) {\n      aiOutput = { ...aiOutput, ...parsedFromText };\n    }\n  }\n\n  if (typeof current?.text === 'string') {\n    const parsedFromCurrentText = parsePossibleJson(current.text);\n    if (parsedFromCurrentText && typeof parsedFromCurrentText === 'object' && !Array.isArray(parsedFromCurrentText)) {\n      aiOutput = { ...(aiOutput || {}), ...parsedFromCurrentText };\n    }\n  }\n\n  if (!aiOutput || typeof aiOutput !== 'object' || Array.isArray(aiOutput)) {\n    aiOutput = { raw_output: aiOutput };\n  }\n\n  return aiOutput;\n};\n\nconst safeAll = (nodeName) => {\n  try {\n    return $(nodeName).all().map((x) => x.json || {});\n  } catch (_) {\n    return [];\n  }\n};\n\nconst sourcePool = [\n  ...safeAll('Keep Ad Image'),\n  ...safeAll('No Image'),\n  ...safeAll('Check if Has Image'),\n  ...safeAll('Check if Video')\n];\n\nconst pickSource = (item, index) => {\n  const current = item.json || {};\n  if (current.ad_id || current.brand || current.headline) return current;\n\n  const pairIndex = item.pairedItem?.item;\n  if (typeof pairIndex === 'number' && sourcePool[pairIndex]) {\n    return sourcePool[pairIndex];\n  }\n\n  if (sourcePool[index]) return sourcePool[index];\n\n  return {};\n};\n\nreturn items.map((item, index) => {\n  const current = item.json || {};\n  const source = pickSource(item, index);\n  const aiOutput = parseOutputObject(current);\n\n  return {\n    json: {\n      ...source,\n      ...current,\n      output: aiOutput,\n      hook_type: aiOutput.hook_type ?? source.hook_type ?? current.hook_type ?? '',\n      why_it_works: aiOutput.why_it_works ?? source.why_it_works ?? current.why_it_works ?? '',\n      takeaway_1: aiOutput.takeaway_1 ?? source.takeaway_1 ?? current.takeaway_1 ?? '',\n      takeaway_2: aiOutput.takeaway_2 ?? source.takeaway_2 ?? current.takeaway_2 ?? '',\n      takeaway_3: aiOutput.takeaway_3 ?? source.takeaway_3 ?? current.takeaway_3 ?? '',\n      hook_de_sortie: aiOutput.hook_de_sortie ?? source.hook_de_sortie ?? current.hook_de_sortie ?? '',\n      tunnel_friction_reasons: aiOutput.tunnel_friction_reasons ?? source.tunnel_friction_reasons ?? current.tunnel_friction_reasons ?? '',\n      tunnel_recommendations: aiOutput.tunnel_recommendations ?? source.tunnel_recommendations ?? current.tunnel_recommendations ?? ''\n    }\n  };\n});"
       },
       "id": "merge-exec-summary-1234",
       "name": "Merge Exec Summary",
@@ -612,31 +612,31 @@
             {
               "id": "dd6734a7-d015-45d0-8b61-1b8fc5fa37cb",
               "name": "hook_type",
-              "value": "={{ $json.output.hook_type }}",
+              "value": "={{ $json.hook_type || $json.output?.hook_type || '' }}",
               "type": "string"
             },
             {
               "id": "270a50e4-79bf-4d8d-b51e-e3194825d478",
               "name": "why_it_works",
-              "value": "={{ $json.output.why_it_works }}",
+              "value": "={{ $json.why_it_works || $json.output?.why_it_works || '' }}",
               "type": "string"
             },
             {
               "id": "2c7946e0-1a4c-44e6-8072-f653be52dcbf",
               "name": "takeaway_1",
-              "value": "={{ $json.output.takeaway_1 }}",
+              "value": "={{ $json.takeaway_1 || $json.output?.takeaway_1 || '' }}",
               "type": "string"
             },
             {
               "id": "4ed44508-ee63-472a-9722-7a17101c2073",
               "name": "takeaway_2",
-              "value": "={{ $json.output.takeaway_2 }}",
+              "value": "={{ $json.takeaway_2 || $json.output?.takeaway_2 || '' }}",
               "type": "string"
             },
             {
               "id": "baea7614-d239-4c00-a5dc-10d96137cc90",
               "name": "takeaway_3",
-              "value": "={{ $json.output.takeaway_3 }}",
+              "value": "={{ $json.takeaway_3 || $json.output?.takeaway_3 || '' }}",
               "type": "string"
             },
             {
@@ -648,7 +648,7 @@
             {
               "id": "50208a9e-721b-453b-add7-03eb828ddb64",
               "name": "landing_page_url",
-              "value": "={{ $json.website_url }}",
+              "value": "={{ $json.landing_page_url || $json.website_url || '' }}",
               "type": "string"
             },
             {
@@ -804,13 +804,13 @@
             {
               "id": "ebb1c170-9522-48d8-9ec9-d539ecf0eb63",
               "name": "tunnel_friction_reasons",
-              "value": "={{ $json.output.tunnel_friction_reasons }}",
+              "value": "={{ $json.tunnel_friction_reasons || $json.output?.tunnel_friction_reasons || '' }}",
               "type": "string"
             },
             {
               "id": "43d5814d-8fb7-4815-8d18-d5bd29b58a3d",
               "name": "tunnel_recommendations",
-              "value": "={{ $json.output.tunnel_recommendations }}",
+              "value": "={{ $json.tunnel_recommendations || $json.output?.tunnel_recommendations || '' }}",
               "type": "string"
             },
             {
@@ -834,7 +834,7 @@
             {
               "id": "landing_page_promise_id",
               "name": "landing_page_promise",
-              "value": "={{ $json.output.hook_de_sortie }}",
+              "value": "={{ $json.landing_page_promise || $json.hook_de_sortie || $json.output?.hook_de_sortie || '' }}",
               "type": "string"
             }
           ]
@@ -973,31 +973,31 @@
             {
               "id": "dd6734a7-d015-45d0-8b61-1b8fc5fa37cb",
               "name": "hook_type",
-              "value": "={{ $json.output.hook_type }}",
+              "value": "={{ $json.hook_type || $json.output?.hook_type || '' }}",
               "type": "string"
             },
             {
               "id": "270a50e4-79bf-4d8d-b51e-e3194825d478",
               "name": "why_it_works",
-              "value": "={{ $json.output.why_it_works }}",
+              "value": "={{ $json.why_it_works || $json.output?.why_it_works || '' }}",
               "type": "string"
             },
             {
               "id": "2c7946e0-1a4c-44e6-8072-f653be52dcbf",
               "name": "takeaway_1",
-              "value": "={{ $json.output.takeaway_1 }}",
+              "value": "={{ $json.takeaway_1 || $json.output?.takeaway_1 || '' }}",
               "type": "string"
             },
             {
               "id": "4ed44508-ee63-472a-9722-7a17101c2073",
               "name": "takeaway_2",
-              "value": "={{ $json.output.takeaway_2 }}",
+              "value": "={{ $json.takeaway_2 || $json.output?.takeaway_2 || '' }}",
               "type": "string"
             },
             {
               "id": "baea7614-d239-4c00-a5dc-10d96137cc90",
               "name": "takeaway_3",
-              "value": "={{ $json.output.takeaway_3 }}",
+              "value": "={{ $json.takeaway_3 || $json.output?.takeaway_3 || '' }}",
               "type": "string"
             },
             {
@@ -1009,7 +1009,7 @@
             {
               "id": "50208a9e-721b-453b-add7-03eb828ddb64",
               "name": "landing_page_url",
-              "value": "={{ $json.website_url }}",
+              "value": "={{ $json.landing_page_url || $json.website_url || '' }}",
               "type": "string"
             },
             {
@@ -1165,13 +1165,13 @@
             {
               "id": "ebb1c170-9522-48d8-9ec9-d539ecf0eb63",
               "name": "tunnel_friction_reasons",
-              "value": "={{ $json.output.tunnel_friction_reasons }}",
+              "value": "={{ $json.tunnel_friction_reasons || $json.output?.tunnel_friction_reasons || '' }}",
               "type": "string"
             },
             {
               "id": "43d5814d-8fb7-4815-8d18-d5bd29b58a3d",
               "name": "tunnel_recommendations",
-              "value": "={{ $json.output.tunnel_recommendations }}",
+              "value": "={{ $json.tunnel_recommendations || $json.output?.tunnel_recommendations || '' }}",
               "type": "string"
             },
             {
@@ -1195,7 +1195,7 @@
             {
               "id": "landing_page_promise_id",
               "name": "landing_page_promise",
-              "value": "={{ $json.output.hook_de_sortie }}",
+              "value": "={{ $json.landing_page_promise || $json.hook_de_sortie || $json.output?.hook_de_sortie || '' }}",
               "type": "string"
             }
           ]
