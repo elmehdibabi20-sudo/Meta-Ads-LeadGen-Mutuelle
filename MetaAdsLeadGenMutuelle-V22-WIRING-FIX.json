@@ -475,7 +475,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n  try { return JSON.parse(trimmed); } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try { return JSON.parse(match[0]); } catch (_) { return null; }\n  }\n};\n\nconst safeAll = (nodeName) => {\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) { return []; }\n};\n\nconst sourcePool = [\n  ...safeAll('Keep Ad Image'),\n  ...safeAll('No Image')\n];\n\nconst byPipelineId = new Map();\nconst byAdId = new Map();\nfor (const s of sourcePool) {\n  if (s && s.pipeline_item_id) byPipelineId.set(String(s.pipeline_item_id), s);\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') byAdId.set(String(s.ad_id), s);\n}\n\nconst pickSource = (current, item, index) => {\n  if (current.pipeline_item_id && byPipelineId.has(String(current.pipeline_item_id))) return byPipelineId.get(String(current.pipeline_item_id));\n  if (current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) return byAdId.get(String(current.ad_id));\n  const pairIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : null;\n  if (typeof pairIndex === 'number' && sourcePool[pairIndex]) return sourcePool[pairIndex];\n  return sourcePool[index] || {};\n};\n\nconst toAiOutput = (current) => {\n  if (current.output && typeof current.output === 'object' && !Array.isArray(current.output)) return current.output;\n  if (typeof current.output === 'string') return parsePossibleJson(current.output) || { raw_text: current.output };\n  if (typeof current.text === 'string') return parsePossibleJson(current.text) || { raw_text: current.text };\n  if (typeof current.response === 'string') return parsePossibleJson(current.response) || { raw_text: current.response };\n  return {};\n};\n\nconst pickText = (...vals) => {\n  for (const v of vals) {\n    if (typeof v === 'string' && v.trim() !== '') return v.trim();\n  }\n  return '';\n};\n\nconst extractFromRawText = (raw, key) => {\n  if (typeof raw !== 'string' || !raw) return '';\n  const re = new RegExp('\\\"' + key + '\\\"\\s*:\\s*\\\"([\\s\\S]*?)\\\"', 'i');\n  const m = raw.match(re);\n  if (!m || !m[1]) return '';\n  return m[1].trim();\n};\n\nreturn items.map((item, index) => {\n  const current = item.json || {};\n  const source = pickSource(current, item, index);\n  const ai = toAiOutput(current);\n  const raw = (typeof current.text === 'string' && current.text)\n    || (typeof current.output === 'string' && current.output)\n    || (ai && typeof ai.raw_text === 'string' ? ai.raw_text : '');\n\n  return {\n    json: {\n      ...source,\n      ...current,\n      output: ai,\n      pipeline_item_id: current.pipeline_item_id || source.pipeline_item_id || '',\n      ad_id: current.ad_id || source.ad_id || '',\n      hook_type: pickText(ai.hook_type, extractFromRawText(raw, 'hook_type'), current.hook_type, source.hook_type),\n      why_it_works: pickText(ai.why_it_works, extractFromRawText(raw, 'why_it_works'), current.why_it_works, source.why_it_works),\n      takeaway_1: pickText(ai.takeaway_1, extractFromRawText(raw, 'takeaway_1'), current.takeaway_1, source.takeaway_1),\n      takeaway_2: pickText(ai.takeaway_2, extractFromRawText(raw, 'takeaway_2'), current.takeaway_2, source.takeaway_2),\n      takeaway_3: pickText(ai.takeaway_3, extractFromRawText(raw, 'takeaway_3'), current.takeaway_3, source.takeaway_3),\n      hook_de_sortie: pickText(ai.hook_de_sortie, extractFromRawText(raw, 'hook_de_sortie'), current.hook_de_sortie, source.hook_de_sortie),\n      tunnel_friction_reasons: pickText(ai.tunnel_friction_reasons, extractFromRawText(raw, 'tunnel_friction_reasons'), current.tunnel_friction_reasons, source.tunnel_friction_reasons),\n      tunnel_recommendations: pickText(ai.tunnel_recommendations, extractFromRawText(raw, 'tunnel_recommendations'), current.tunnel_recommendations, source.tunnel_recommendations)\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n  try { return JSON.parse(trimmed); } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try { return JSON.parse(match[0]); } catch (_) { return null; }\n  }\n};\n\nconst safeAll = (nodeName) => {\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) { return []; }\n};\n\nconst sourcePool = safeAll('Merge Image Streams');\nconst byPipelineId = new Map();\nconst byAdId = new Map();\nfor (const s of sourcePool) {\n  if (s && s.pipeline_item_id) byPipelineId.set(String(s.pipeline_item_id), s);\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') byAdId.set(String(s.ad_id), s);\n}\n\nconst pickSource = (current, item, index) => {\n  if (current.pipeline_item_id && byPipelineId.has(String(current.pipeline_item_id))) return byPipelineId.get(String(current.pipeline_item_id));\n  if (current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) return byAdId.get(String(current.ad_id));\n  const pairIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : null;\n  if (typeof pairIndex === 'number' && sourcePool[pairIndex]) return sourcePool[pairIndex];\n  return sourcePool[index] || {};\n};\n\nconst toAiOutput = (current) => {\n  if (current.output && typeof current.output === 'object' && !Array.isArray(current.output)) return current.output;\n  if (typeof current.output === 'string') return parsePossibleJson(current.output) || { raw_text: current.output };\n  if (typeof current.text === 'string') return parsePossibleJson(current.text) || { raw_text: current.text };\n  if (typeof current.response === 'string') return parsePossibleJson(current.response) || { raw_text: current.response };\n  return {};\n};\n\nconst pickText = (...vals) => {\n  for (const v of vals) {\n    if (typeof v === 'string' && v.trim() !== '') return v.trim();\n  }\n  return '';\n};\n\nconst extractFromRawText = (raw, key) => {\n  if (typeof raw !== 'string' || !raw) return '';\n  const re = new RegExp('\\\"' + key + '\\\"\\s*:\\s*\\\"([\\s\\S]*?)\\\"', 'i');\n  const m = raw.match(re);\n  if (!m || !m[1]) return '';\n  return m[1].trim();\n};\n\nreturn items.map((item, index) => {\n  const current = item.json || {};\n  const source = pickSource(current, item, index);\n  const ai = toAiOutput(current);\n  const raw = (typeof current.text === 'string' && current.text)\n    || (typeof current.output === 'string' && current.output)\n    || (ai && typeof ai.raw_text === 'string' ? ai.raw_text : '');\n\n  return {\n    json: {\n      ...source,\n      ...current,\n      output: ai,\n      pipeline_item_id: current.pipeline_item_id || source.pipeline_item_id || '',\n      ad_id: current.ad_id || source.ad_id || '',\n      hook_type: pickText(ai.hook_type, extractFromRawText(raw, 'hook_type'), current.hook_type, source.hook_type),\n      why_it_works: pickText(ai.why_it_works, extractFromRawText(raw, 'why_it_works'), current.why_it_works, source.why_it_works),\n      takeaway_1: pickText(ai.takeaway_1, extractFromRawText(raw, 'takeaway_1'), current.takeaway_1, source.takeaway_1),\n      takeaway_2: pickText(ai.takeaway_2, extractFromRawText(raw, 'takeaway_2'), current.takeaway_2, source.takeaway_2),\n      takeaway_3: pickText(ai.takeaway_3, extractFromRawText(raw, 'takeaway_3'), current.takeaway_3, source.takeaway_3),\n      hook_de_sortie: pickText(ai.hook_de_sortie, extractFromRawText(raw, 'hook_de_sortie'), current.hook_de_sortie, source.hook_de_sortie),\n      tunnel_friction_reasons: pickText(ai.tunnel_friction_reasons, extractFromRawText(raw, 'tunnel_friction_reasons'), current.tunnel_friction_reasons, source.tunnel_friction_reasons),\n      tunnel_recommendations: pickText(ai.tunnel_recommendations, extractFromRawText(raw, 'tunnel_recommendations'), current.tunnel_recommendations, source.tunnel_recommendations)\n    }\n  };\n});"
       },
       "id": "a4673f24-0da8-46c6-9b4c-574fabd7c4ef",
       "name": "Merge Exec Summary",
@@ -1236,6 +1236,32 @@
         520,
         -220
       ]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "85625d7c-ea1a-41e9-b540-bfc121d76108",
+      "name": "Merge Video Streams",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        900,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "646dbb60-cdbf-4bfb-9cf4-f531b32f3044",
+      "name": "Merge Image Streams",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1360,
+        -220
+      ]
     }
   ],
   "pinData": {},
@@ -1435,7 +1461,7 @@
       "main": [
         [
           {
-            "node": "Check if Has Image",
+            "node": "Merge Video Streams",
             "type": "main",
             "index": 0
           }
@@ -1446,9 +1472,9 @@
       "main": [
         [
           {
-            "node": "Check if Has Image",
+            "node": "Merge Video Streams",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -1486,7 +1512,7 @@
       "main": [
         [
           {
-            "node": "Generate Executive Summary",
+            "node": "Merge Image Streams",
             "type": "main",
             "index": 0
           }
@@ -1497,9 +1523,9 @@
       "main": [
         [
           {
-            "node": "Generate Executive Summary",
+            "node": "Merge Image Streams",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -1604,6 +1630,28 @@
         [
           {
             "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Video Streams": {
+      "main": [
+        [
+          {
+            "node": "Check if Has Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Image Streams": {
+      "main": [
+        [
+          {
+            "node": "Generate Executive Summary",
             "type": "main",
             "index": 0
           }
