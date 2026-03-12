@@ -312,7 +312,7 @@
       "parameters": {
         "promptType": "define",
         "text": "Tu es un expert senior CRO + lead generation pour mutuelle sant en France.\nAnalyse le tunnel (formulaire natif Meta ou landing externe) pour un courtier franais.\n\nRgles:\n- Ne pas inventer dinformations.\n- Sparer faits observables et interprtations.\n- Signaler les donnes manquantes.\n- Garder une sortie JSON stricte.\n\nDonnes:\nTitre: {{ $json.landing_page_title }}\nPromesse: {{ $json.landing_page_promise }}\nIntro formulaire: {{ $json.landing_page_intro_text || \"N/A\" }}\nType formulaire: {{ $json.form_type }}\nTotal champs: {{ $json.form_total_fields }}\nChamps obligatoires: {{ $json.form_required_fields }}\nEmail: {{ $json.form_has_email }}\nTlphone: {{ $json.form_has_phone }}\nNaissance: {{ $json.form_has_birth_date }}\nCode postal: {{ $json.form_has_postal_code }}\nSituation sociale: {{ $json.form_has_social_status }}\nCTA: {{ $json.cta_text }}\nTemps estim: {{ $json.estimated_completion_time }}\n\nContexte march FR mutuelle:\n- Le tlphone est souvent indispensable pour qualification / rappel conseiller\n- Trop de champs dun coup rduit la conversion\n- Cohrence promesse pub -> formulaire -> page est critique\n\nRetourne UNIQUEMENT ce JSON:\n{\n  \"tunnel_quality_score\": 0,\n  \"tunnel_friction_level\": \"low|medium|high\",\n  \"tunnel_friction_reasons\": [\"string\"],\n  \"tunnel_recommendations\": [\"string\"],\n  \"tunnel_estimated_conversion_rate\": 0\n}\n",
-        "hasOutputParser": true,
+        "hasOutputParser": false,
         "messages": {
           "messageValues": [
             {
@@ -1378,17 +1378,6 @@
       ]
     },
     "Merge Form Data": {},
-    "Structured Output Parser1": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "Analyze Tunnel Quality",
-            "type": "ai_outputParser",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Top 3 Ads": {
       "main": [
         [
