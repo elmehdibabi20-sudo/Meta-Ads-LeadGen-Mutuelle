@@ -220,7 +220,7 @@
             }
           ]
         },
-        "hasOutputParser": true
+        "hasOutputParser": false
       },
       "id": "81003cf5-d386-47cd-8d55-9e270824ad7f",
       "name": "Generate Executive Summary",
@@ -1592,17 +1592,6 @@
           {
             "node": "Append Sheet (Native Form)",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Structured Output Parser": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "Generate Executive Summary",
-            "type": "ai_outputParser",
             "index": 0
           }
         ]
