@@ -3,13 +3,13 @@
   "nodes": [
     {
       "parameters": {
-        "path": "1ffdeb08-ec24-453b-80c0-8bb9a9d52590",
-        "formTitle": "Ads Library Finder - Mutuelle Sant?",
+        "path": "41f91968-e225-4517-a882-fe605de4c98f",
+        "formTitle": "Ads Library Finder - Mutuelle Santé",
         "formFields": {
           "values": [
             {
               "fieldLabel": "searchQuery",
-              "placeholder": "Ex: mutuelle sant?, assurance sant? senior"
+              "placeholder": "Ex: mutuelle santé, assurance santé senior"
             },
             {
               "fieldLabel": "Country",
@@ -19,27 +19,27 @@
         },
         "options": {}
       },
-      "id": "aec328f0-7032-482b-818b-a7b2b079302a",
+      "id": "202f32ac-9ad0-4d99-81f4-410358020cf3",
       "name": "Ad Analyzer Form",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        -320
+        -3664,
+        208
       ],
-      "webhookId": "1ffdeb08-ec24-453b-80c0-8bb9a9d52590"
+      "webhookId": "41f91968-e225-4517-a882-fe605de4c98f"
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const inputData = item.json || {};\n  const searchQuery = inputData.searchQuery || 'mutuelle sant?';\n  const country = inputData.Country || 'FR';\n  const baseUrl = 'https://www.facebook.com/ads/library/';\n  const params = `?active_status=active&ad_type=all&country=${country}&q=${encodeURIComponent(searchQuery)}&search_type=keyword_unordered`;\n\n  return {\n    json: {\n      ...inputData,\n      search_query: searchQuery,\n      country,\n      final_url: baseUrl + params\n    }\n  };\n});"
       },
-      "id": "ef0fd826-4faa-4fdb-b82d-0a26149ce188",
+      "id": "c76995c1-8b7a-46d2-a5b5-39afb32f8553",
       "name": "Build Dynamic URL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
-        -320
+        -3440,
+        208
       ]
     },
     {
@@ -51,39 +51,39 @@
         "jsonBody": "={\n  \"activeStatus\": \"active\",\n  \"adType\": \"all\",\n  \"isDetailsPerAd\": true,\n  \"resultsLimit\": 3,\n  \"startUrls\": [\n    {\n      \"url\": \"{{ $json.final_url }}\"\n    }\n  ]\n}",
         "options": {}
       },
-      "id": "657430be-8556-4de9-aa3e-f2cd9449dbcf",
+      "id": "63dccaec-f85e-4fe6-bed1-4cd725944e03",
       "name": "Apify - Launch Scraper",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        440,
-        -320
+        -3216,
+        208
       ]
     },
     {
       "parameters": {
         "jsCode": "const now = new Date();\nconst out = [];\n\nconst isPlaceholder = (str) => typeof str === 'string' && str.includes('{{') && str.includes('}}');\nconst cleanText = (v) => (typeof v === 'string' ? v.trim() : '');\nconst normalizeUrl = (u) => {\n  if (typeof u !== 'string') return '';\n  const v = u.trim();\n  if (!v) return '';\n  if (!/^https?:\\/\\//i.test(v)) return '';\n  return v;\n};\nconst pushUnique = (arr, value) => {\n  if (value && !arr.includes(value)) arr.push(value);\n};\n\nconst allItems = $input.all();\nfor (let itemIndex = 0; itemIndex < allItems.length; itemIndex++) {\n  const item = allItems[itemIndex];\n  const data = item.json || {};\n  const snap = data.snapshot || {};\n  const cards = Array.isArray(snap.cards) ? snap.cards : [];\n\n  const cardVariants = cards.map((card, idx) => {\n    const image = normalizeUrl(card.originalImageUrl)\n      || normalizeUrl(card.original_image_url)\n      || normalizeUrl(card.resizedImageUrl)\n      || normalizeUrl(card.resized_image_url)\n      || normalizeUrl(card.videoPreviewImageUrl)\n      || normalizeUrl(card.video_preview_image_url)\n      || '';\n    const video = normalizeUrl(card.videoHdUrl)\n      || normalizeUrl(card.video_hd_url)\n      || normalizeUrl(card.videoSdUrl)\n      || normalizeUrl(card.video_sd_url)\n      || '';\n\n    return {\n      index: idx + 1,\n      title: card.title || '',\n      body: card.body || '',\n      link_description: card.linkDescription || card.link_description || '',\n      image_url: image,\n      video_url: video,\n      cta_type: card.ctaType || card.cta_type || ''\n    };\n  });\n\n  var headline = snap.title || snap.ad_title || data.title || 'Pas de titre';\n  var body_text = (snap.body && snap.body.text) || snap.ad_body || data.body || 'Pas de texte';\n  var link_description = snap.linkDescription || snap.link_description || data.link_description || '';\n\n  const is_dco_ad = isPlaceholder(headline) || isPlaceholder(body_text) || isPlaceholder(link_description);\n  let is_data_from_cards = false;\n\n  if (is_dco_ad && cardVariants.length > 0) {\n    const first = cardVariants[0];\n    headline = first.title || first.body || headline;\n    body_text = first.body || body_text;\n    link_description = first.link_description || link_description;\n    is_data_from_cards = true;\n  }\n\n  const visualUrls = [];\n\n  if (Array.isArray(snap.images)) {\n    for (const img of snap.images) {\n      const fromImage = normalizeUrl(img && img.originalImageUrl)\n        || normalizeUrl(img && img.original_image_url)\n        || normalizeUrl(img && img.resizedImageUrl)\n        || normalizeUrl(img && img.resized_image_url)\n        || normalizeUrl((img && img.imageCrops && img.imageCrops[0]) ? img.imageCrops[0].originalImageUrl : '')\n        || normalizeUrl((img && img.image_crops && img.image_crops[0]) ? img.image_crops[0].original_image_url : '');\n      pushUnique(visualUrls, fromImage);\n    }\n  }\n\n  for (const v of cardVariants) pushUnique(visualUrls, v.image_url);\n\n  if (visualUrls.length === 0) {\n    const fallbackUrl = normalizeUrl(data.imageUrl)\n      || normalizeUrl(data.image_url)\n      || normalizeUrl((snap.cards && snap.cards[0]) ? (snap.cards[0].originalImageUrl || snap.cards[0].original_image_url) : '');\n    pushUnique(visualUrls, fallbackUrl);\n  }\n\n  const has_variants = visualUrls.length > 1 || cardVariants.length > 1 || !!data.adHasMultipleVersions || !!snap.adHasMultipleVersions;\n  const version_count = Math.max(visualUrls.length, cardVariants.length, data.versionCount || 0, snap.versionCount || 0, has_variants ? 2 : 1);\n\n  let dominant_age_range = 'Unknown';\n  let dominant_gender = 'All';\n  let age_gender_breakdown = '';\n  let eu_total_reach = 0;\n  let target_locations = 'Inconnu';\n\n  const aaa_info = (data.ad_details && data.ad_details.aaa_info) || (snap.age_country_gender_reach_breakdown ? { age_country_gender_reach_breakdown: snap.age_country_gender_reach_breakdown } : null);\n\n  if (data.ad_details && data.ad_details.aaa_info && data.ad_details.aaa_info.location_audience) {\n    target_locations = data.ad_details.aaa_info.location_audience.map(function(l) { return l.name; }).join(', ');\n  }\n\n  if (aaa_info && aaa_info.age_country_gender_reach_breakdown && aaa_info.age_country_gender_reach_breakdown.length) {\n    eu_total_reach = aaa_info.eu_total_reach || 0;\n    let countryData = aaa_info.age_country_gender_reach_breakdown.find(function(c) { return c.country === 'FR'; }) || aaa_info.age_country_gender_reach_breakdown[0];\n    if (countryData && countryData.age_gender_breakdowns && countryData.age_gender_breakdowns.length) {\n      let maxReach = 0;\n      let maxGender = 'All';\n      for (const b of countryData.age_gender_breakdowns) {\n        const total = (b.male || 0) + (b.female || 0) + (b.unknown || 0);\n        if (total > maxReach) {\n          maxReach = total;\n          dominant_age_range = b.age_range;\n          const f = b.female || 0;\n          const m = b.male || 0;\n          maxGender = f > m ? 'female' : (m > f ? 'male' : 'All');\n        }\n      }\n      dominant_gender = maxGender;\n      age_gender_breakdown = countryData.age_gender_breakdowns.map(function(b) { return b.age_range + ': M=' + (b.male || 0) + ' F=' + (b.female || 0); }).join(' | ');\n    }\n  }\n\n  const videoCandidates = [];\n  pushUnique(videoCandidates, normalizeUrl(data.videoUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_url));\n  pushUnique(videoCandidates, normalizeUrl(data.videoHdUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_hd_url));\n  pushUnique(videoCandidates, normalizeUrl(data.videoSdUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_sd_url));\n\n  if (typeof data.video_urls === 'string') {\n    for (const part of data.video_urls.split(/[|,]/)) pushUnique(videoCandidates, normalizeUrl(part));\n  }\n\n  if (Array.isArray(snap.videos)) {\n    for (const vid of snap.videos) {\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.videoHdUrl));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.video_hd_url));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.videoSdUrl));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.video_sd_url));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.url));\n    }\n  }\n\n  for (const v of cardVariants) pushUnique(videoCandidates, normalizeUrl(v.video_url));\n\n  const videoUrl = videoCandidates.find(Boolean) || '';\n  const hasVideo = Boolean(videoUrl);\n\n  const startDate = new Date(data.adRunStartDate || data.startDateFormatted || snap.creation_time || now);\n  const daysActive = Math.ceil(Math.abs(now - startDate) / (1000 * 60 * 60 * 24)) || 1;\n\n  let score = 0;\n  score += Math.min(daysActive * 1.5, 30);\n  score += hasVideo ? 15 : 0;\n  score += (version_count || 0) * 10;\n  score += Math.min((eu_total_reach || 0) / 50000, 20);\n\n  const virality_score = Math.min(Math.round(((eu_total_reach || 0) / 100000) * 10 + (version_count * 5) + (hasVideo ? 10 : 0) + (daysActive > 30 ? 10 : 0)), 100);\n\n  const extraTexts = (Array.isArray(snap.extraTexts) ? snap.extraTexts : [])\n    .map(function(x) { return cleanText(x && x.text); })\n    .filter(Boolean);\n\n  let form_type = 'external_landing_page';\n  let native_questions_array = [];\n  let landing_page_intro_text = '';\n  let native_landing_page_promise = '';\n\n  if (extraTexts.length > 0) {\n    const firstQuestionIndex = extraTexts.findIndex(function(t) { return t.endsWith('?'); });\n    if (firstQuestionIndex > 0) {\n      landing_page_intro_text = extraTexts.slice(0, firstQuestionIndex).join(' ').trim();\n    } else if (firstQuestionIndex === -1 && extraTexts.length > 0) {\n      landing_page_intro_text = extraTexts[0];\n    }\n\n    const lastQuestionIndex = (function() {\n      for (let i = extraTexts.length - 1; i >= 0; i--) {\n        if (extraTexts[i].endsWith('?')) return i;\n      }\n      return -1;\n    })();\n\n    const tailTexts = lastQuestionIndex >= 0\n      ? extraTexts.slice(lastQuestionIndex + 1).filter(Boolean)\n      : extraTexts.filter(function(t) { return !t.endsWith('?'); });\n\n    if (tailTexts.length > 0) {\n      native_landing_page_promise = tailTexts.join(' ').trim();\n    }\n\n    let currentQuestion = null;\n    let currentChoices = [];\n\n    for (const txt of extraTexts) {\n      const lower = txt.toLowerCase();\n\n      if (lower.includes('conditions gnrales') || lower.includes('politique de confidentialit')) continue;\n\n      if (txt.endsWith('?')) {\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n        }\n        currentQuestion = txt;\n        currentChoices = [];\n        continue;\n      }\n\n      if (currentQuestion && (['OUI', 'NON'].includes(txt.toUpperCase()) || txt.includes('?') || lower.includes('je ne sais pas') || /^[0-9]+.*[0-9]+$/.test(txt))) {\n        currentChoices.push(txt);\n        continue;\n      }\n\n      if (['full name', 'phone number', 'email', 'post code', 'postal code'].includes(lower)) {\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n          currentQuestion = null;\n          currentChoices = [];\n        }\n        native_questions_array.push({ question: txt, type: 'standard_field', choices: null });\n      }\n    }\n\n    if (currentQuestion) {\n      native_questions_array.push({\n        question: currentQuestion,\n        type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n        choices: currentChoices.length > 0 ? currentChoices : null\n      });\n    }\n\n    if (native_questions_array.length > 0) form_type = 'native_meta_form';\n  }\n\n  const parsed_form_text = native_questions_array.map(function(q) {\n    if (q.type === 'multiple_choice') return '[Choix Multiple] ' + q.question + ' -> Choix: ' + ((q.choices || []).join(', '));\n    if (q.type === 'standard_field') return '[Donnee Demandee] ' + q.question;\n    return '[Question Ouverte] ' + q.question;\n  }).join('\\n');\n\n  const questionsObject = {};\n  for (let i = 0; i < 15; i++) {\n    const q = native_questions_array[i];\n    const k = 'question_' + (i + 1);\n    if (!q) { questionsObject[k] = ''; continue; }\n    if (q.type === 'multiple_choice') questionsObject[k] = '[Choix Multiple] ' + q.question + ' -> Choix: ' + ((q.choices || []).join(', '));\n    else if (q.type === 'standard_field') questionsObject[k] = '[Donnee Demandee] ' + q.question;\n    else questionsObject[k] = '[Question Ouverte] ' + q.question;\n  }\n\n  const variantFlat = {};\n  for (let i = 0; i < 5; i++) {\n    const v = cardVariants[i] || {};\n    const idx = i + 1;\n    variantFlat['variant_url_' + idx] = v.image_url || '';\n    variantFlat['variant_title_' + idx] = v.title || '';\n    variantFlat['variant_copy_' + idx] = v.body || '';\n  }\n\n  const rawAdId = data.adArchiveID || data.ad_archive_id || data.id || '';\n  const pipeline_item_id = (rawAdId ? String(rawAdId) : 'noad') + '::' + String(itemIndex);\n\n  out.push({\n    json: {\n      pipeline_item_id,\n      ad_id: rawAdId,\n      brand: data.pageName || snap.page_name || 'Inconnu',\n      days_active: daysActive,\n      performance_score: Math.round(score),\n      headline: headline,\n      body_text: body_text,\n      link_description: link_description,\n      ad_copy: body_text,\n      visual_url: visualUrls[0] || '',\n      visual_urls: visualUrls.join(' | '),\n      visual_urls_json: JSON.stringify(visualUrls),\n      image_count: visualUrls.length,\n      has_image: visualUrls.length > 0,\n      has_variants: has_variants,\n      version_count: version_count,\n      variant_count_from_cards: cardVariants.length,\n      variant_details_json: JSON.stringify(cardVariants),\n      dominant_age_range: dominant_age_range,\n      dominant_gender: dominant_gender,\n      age_gender_breakdown: age_gender_breakdown,\n      eu_total_reach: eu_total_reach,\n      target_locations: target_locations,\n      is_dco_ad: is_dco_ad,\n      is_data_from_cards: is_data_from_cards,\n      form_type: form_type,\n      form_fields_json: form_type === 'native_meta_form' ? JSON.stringify(native_questions_array) : '',\n      form_total_fields: native_questions_array.length,\n      native_form_questions_plain: parsed_form_text,\n      landing_page_intro_text: landing_page_intro_text,\n      landing_page_promise: form_type === 'native_meta_form' ? native_landing_page_promise : '',\n      cta_type: data.ctaType || snap.cta_type || snap.cta_text || 'LEARN_MORE',\n      video_url: videoUrl,\n      has_video: hasVideo,\n      website_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || '',\n      landing_page_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || '',\n      virality_score: virality_score,\n      hook_type: '',\n      why_it_works: '',\n      takeaway_1: '',\n      takeaway_2: '',\n      takeaway_3: '',\n      exit_hook: '',\n      tunnel_friction_reasons_detailed: '',\n      ...variantFlat,\n      ...questionsObject\n    }\n  });\n}\n\nreturn out.sort(function(a, b) {\n  return (b.json.performance_score || 0) - (a.json.performance_score || 0);\n});"
       },
-      "id": "e2e3e98e-cb54-4c3a-8028-09e2da69b2a9",
+      "id": "898223e2-0284-4118-9c1f-793d8962f0ff",
       "name": "Process & Score (Etape 1 Complete)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        660,
-        -320
+        -3008,
+        208
       ]
     },
     {
       "parameters": {
         "maxItems": "={{ $input.all().length }}"
       },
-      "id": "1962159b-edca-4bbb-ac5c-0acba99a7fcf",
+      "id": "586093b8-f456-42ec-b71d-7974ced2f328",
       "name": "Top 3 Ads",
       "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        860,
-        -320
+        -2800,
+        208
       ]
     },
     {
@@ -110,13 +110,13 @@
         },
         "options": {}
       },
-      "id": "8f867d40-9fae-4701-8bcc-9c7c488d671d",
+      "id": "3a31a5d9-9845-4c39-b520-95b1a1124128",
       "name": "Check if Video",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1060,
-        -320
+        -2608,
+        208
       ]
     },
     {
@@ -132,17 +132,17 @@
         "text": "Tu es un expert senior Meta Ads France, spcialis en lead generation mutuelle sant.\nAnalyse cette vido comme un courtier franais qui veut rpliquer ce qui convertit.\n\nRgles:\n- Ninvente rien.\n- Distingue Faits observables vs Interprtations.\n- Signale les donnes manquantes.\n- Concentre-toi sur le march franais (devis, comparaison, conomies, garanties, rappel conseiller).\n\nAnalyse demande:\n1) Hook des 3 premires secondes (angle, promesse, segment vis)\n2) Douleur / motivation active (conomies, meilleure couverture, reste  charge, seniors, TNS, familles, etc.)\n3) Crdibilit / rassurance (preuve, ton, conformit perue, clart)\n4) CTA et mcanique de conversion (formulaire natif vs landing externe)\n5) Signaux de performance potentielle (forces / risques)\n\nRponds en franais, concis, actionnable, en 6 blocs:\n- faits_observables\n- interpretation_marketing\n- segment_cible_probable\n- points_forts\n- points_faibles\n- recommandation_pour_courtier",
         "options": {}
       },
-      "id": "681d1833-34f7-45d3-a344-cbefba954b08",
+      "id": "e3628f45-e98e-4748-a543-f3f2d81d6833",
       "name": "Analyze Video",
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1,
       "position": [
-        1860,
-        -420
+        -1808,
+        96
       ],
       "credentials": {
         "googlePalmApi": {
-          "id": "4vMH2waKPlVrzDb4",
+          "id": "FZ7yPeFCQGbpT9vt",
           "name": "Google Gemini(PaLM) Api account"
         }
       }
@@ -171,13 +171,13 @@
         },
         "options": {}
       },
-      "id": "1b648590-22fa-4018-9359-314463673bf4",
+      "id": "f9ca635c-f643-4311-86bf-fbc702bafceb",
       "name": "Check if Has Image",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2460,
-        -320
+        -1200,
+        208
       ]
     },
     {
@@ -194,17 +194,17 @@
         "simplify": false,
         "options": {}
       },
-      "id": "c186f0c0-e904-467a-8443-f17b891b40a5",
+      "id": "c3459b81-2e27-4373-a103-ac1f4245db5a",
       "name": "Analyze Image",
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1,
       "position": [
-        2660,
-        -420
+        -1008,
+        96
       ],
       "credentials": {
         "googlePalmApi": {
-          "id": "4vMH2waKPlVrzDb4",
+          "id": "FZ7yPeFCQGbpT9vt",
           "name": "Google Gemini(PaLM) Api account"
         }
       }
@@ -212,23 +212,22 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "Tu es un expert senior en Meta Ads, lead generation et copywriting pour la mutuelle sant en France.\nObjectif: produire une analyse exploitable immdiatement par un courtier franais.\n\nCONSIGNES CRITIQUES:\n- Ne jamais halluciner ni inventer des donnes absentes.\n- Distinguer explicitement faits_observables et interpretations.\n- Signaler les informations manquantes quand ncessaire.\n- Tenir compte du contexte franais (devis mutuelle, comparateur, conomies, seniors, TNS, familles, hospitalisation, optique, dentaire, aides auditives, rappel conseiller).\n\nDONNES DISPONIBLES:\nBrand: {{ $json.brand }}\nDays Active: {{ $json.days_active }}\nTitle: {{ $json.headline }}\nBody: {{ $json.body_text }}\nLink Description: {{ $json.link_description }}\nVariants: {{ $json.version_count }}\nVisual Analysis Video: {{ $json.video_analysis || \"N/A\" }}\nVisual Analysis Image: {{ $json.image_analysis || \"N/A\" }}\nForm Type: {{ $json.form_type || \"N/A\" }}\nNative Questions: {{ $json.native_form_questions_plain || \"N/A\" }}\nLanding Intro: {{ $json.landing_page_intro_text || \"N/A\" }}\nLanding Promise: {{ $json.landing_page_promise || \"N/A\" }}\nVariant Details: {{ $json.variant_details_json || \"N/A\" }}\n\nRENVOIE UNIQUEMENT UN JSON VALIDE (AUCUN TEXTE HORS JSON) avec les champs:\n- resume_executif\n- segment_cible\n- angle_marketing\n- promesse_principale\n- benefices_mis_en_avant\n- douleur_principale\n- motivation_principale\n- objections_probables\n- reponses_aux_objections\n- elements_de_reassurance\n- type_de_conversion\n- type_de_formulaire\n- niveau_intention\n- mecanique_de_leadgen\n- qualite_du_copywriting\n- qualite_du_visuel\n- coherence_pub_formulaire_lp\n- analyse_landing_page\n- analyse_formulaire\n- analyse_des_variantes\n- points_forts\n- points_faibles\n- recommandations\n- score_global\n- justification_du_score\n- hook_type\n- why_it_works\n- takeaway_1\n- takeaway_2\n- takeaway_3\n- hook_de_sortie\n- tunnel_friction_reasons\n- tunnel_recommendations\n\nLe premier caractre doit tre { et le dernier }.",
+        "text": "Tu es un expert senior Meta Ads + copywriting + lead generation pour le march? fran?ais de la mutuelle sant?.\nTa mission: produire une analyse concurrentielle imm?diatement exploitable par un courtier fran?ais.\n\nR?gles imp?ratives:\n- N'invente pas de donn?es absentes.\n- Utilise au maximum les donn?es disponibles et inf?re intelligemment quand c'est raisonnable.\n- ?vite les r?ponses g?n?riques. Interdit sauf cas extr?me: \"donn?es insuffisantes\", \"non d?termin?\", \"information manquante\".\n- Distingue faits observables et interpr?tation, mais livre une conclusion exploitable.\n- ?cris en fran?ais clair, concret, orient? action business.\n\nDonn?es disponibles:\nBrand: {{ $json.brand }}\nDays Active: {{ $json.days_active }}\nTitle: {{ $json.headline }}\nBody: {{ $json.body_text }}\nLink Description: {{ $json.link_description }}\nVariants: {{ $json.version_count }}\nVideo Analysis: {{ $json.video_analysis || \"N/A\" }}\nImage Analysis: {{ $json.image_analysis || \"N/A\" }}\nForm Type: {{ $json.form_type || \"N/A\" }}\nNative Questions: {{ $json.native_form_questions_plain || \"N/A\" }}\nLanding Intro: {{ $json.landing_page_intro_text || \"N/A\" }}\nLanding Promise: {{ $json.landing_page_promise || \"N/A\" }}\nVariant Details: {{ $json.variant_details_json || \"N/A\" }}\n\nExigences fortes sur les champs cl?s:\n1) hook_type:\n- Choisis UN hook principal parmi: economie, comparaison, peur_probleme, urgence, curiosite, simplicite, reassurance, benefice_direct, autorite_preuve, gain_de_temps, segment_senior, devis_personnalise, rappel_conseiller, autre.\n- Donne uniquement la cat?gorie choisie.\n\n2) why_it_works:\n- Explique concr?tement pourquoi l'annonce peut convertir sur le march? mutuelle sant? France.\n- Base-toi sur promesse + segment + ?motion + clart? + coh?rence offre/tunnel.\n- 2 ? 4 phrases utiles, pas de conditionnel vide.\n\n3) takeaway_1 / takeaway_2 / takeaway_3:\n- 3 enseignements diff?rents, courts, actionnables, non g?n?riques.\n- Chaque takeaway doit ?tre directement r?utilisable par un courtier.\n- Format: une phrase, verbe d'action, orient?e ex?cution.\n\nContraintes de qualit?:\n- score_global: entier 0-100.\n- recommandations: prioris?es (impact business).\n- champs textuels: ?viter le blabla; privil?gier pr?cision concr?te.\n\nRetourne UNIQUEMENT un JSON valide (aucun texte hors JSON) avec EXACTEMENT ces cl?s:\n- resume_executif\n- segment_cible\n- angle_marketing\n- promesse_principale\n- benefices_mis_en_avant\n- douleur_principale\n- motivation_principale\n- objections_probables\n- reponses_aux_objections\n- elements_de_reassurance\n- type_de_conversion\n- type_de_formulaire\n- niveau_intention\n- mecanique_de_leadgen\n- qualite_du_copywriting\n- qualite_du_visuel\n- coherence_pub_formulaire_lp\n- analyse_landing_page\n- analyse_formulaire\n- analyse_des_variantes\n- points_forts\n- points_faibles\n- recommandations\n- score_global\n- justification_du_score\n- hook_type\n- why_it_works\n- takeaway_1\n- takeaway_2\n- takeaway_3\n- hook_de_sortie\n- tunnel_friction_reasons\n- tunnel_recommendations",
         "messages": {
           "messageValues": [
             {
-              "message": "Tu es un consultant senior en acquisition digitale pour courtiers mutuelle sant en France. Tu fournis des analyses prcises, factuelles, directement actionnables."
+              "message": "Tu es un consultant senior acquisition digitale pour courtiers mutuelle sant? en France. Tu fournis des analyses sp?cifiques, actionnables, orient?es conversion et concurrence."
             }
           ]
-        },
-        "hasOutputParser": false
+        }
       },
-      "id": "81003cf5-d386-47cd-8d55-9e270824ad7f",
+      "id": "0e26491a-ad0b-449e-a6e3-54ae5c94ab98",
       "name": "Generate Executive Summary",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
       "position": [
-        3260,
-        -320
+        -400,
+        208
       ]
     },
     {
@@ -239,14 +238,14 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        3260,
-        -520
+        -400,
+        0
       ],
-      "id": "94c0bd93-2960-4ce6-8ea4-75eb14de02b9",
+      "id": "ecc96906-4007-44bd-8797-2c78bb31fbd1",
       "name": "OpenRouter Chat Model",
       "credentials": {
         "openRouterApi": {
-          "id": "vbr3DBrq4MZoqQmh",
+          "id": "a0VcSKaHUEr5b2Lt",
           "name": "OpenRouter account"
         }
       }
@@ -258,23 +257,23 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        3260,
-        -620
+        -400,
+        -112
       ],
-      "id": "7e3522fb-7948-4f7c-8905-1526fff1aa5e",
+      "id": "d457f80a-f0e8-4d7a-9dd2-47419e18c82c",
       "name": "Structured Output Parser"
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const current = item.json || {};\n  const formType = current.form_type || 'external_landing_page';\n  const landingPageUrl = current.landing_page_url || current.website_url || current.linkUrl || '';\n  const isNative = formType === 'native_meta_form' || landingPageUrl.includes('fb.me') || landingPageUrl.includes('facebook.com/lead');\n\n  if (isNative) {\n    const nativeQuestions = (current.native_form_questions_plain || '').toLowerCase();\n    return {\n      json: {\n        ...current,\n        form_type: 'native_meta_form',\n        landing_page_title: current.landing_page_title || 'Formulaire natif Meta',\n        landing_page_subtitle: current.landing_page_subtitle || '',\n        landing_page_promise: current.landing_page_promise || 'Genere via Facebook',\n        form_required_fields: current.form_required_fields ?? current.form_total_fields ?? 0,\n        form_optional_fields: current.form_optional_fields ?? 0,\n        form_has_email: current.form_has_email ?? nativeQuestions.includes('email'),\n        email_field_name: current.email_field_name || 'email',\n        form_has_phone: current.form_has_phone ?? (nativeQuestions.includes('phone') || nativeQuestions.includes('telephone')),\n        phone_field_name: current.phone_field_name || 'phone',\n        form_has_birth_date: current.form_has_birth_date ?? false,\n        birth_date_field_name: current.birth_date_field_name || '',\n        form_has_postal_code: current.form_has_postal_code ?? nativeQuestions.includes('post code'),\n        postal_code_field_name: current.postal_code_field_name || 'postal_code',\n        form_has_social_status: current.form_has_social_status ?? false,\n        social_status_field_name: current.social_status_field_name || '',\n        cta_text: current.cta_text || 'Envoyer',\n        estimated_completion_time: current.estimated_completion_time || '1 min',\n        skip_html_fetch: true,\n        tunnel_quality_score: current.tunnel_quality_score ?? 5,\n        tunnel_friction_level: current.tunnel_friction_level || 'low',\n        tunnel_friction_reasons: current.tunnel_friction_reasons || 'native_form_no_friction',\n        tunnel_recommendations: current.tunnel_recommendations || 'use_webhook_or_graph_api',\n        tunnel_estimated_conversion_rate: current.tunnel_estimated_conversion_rate ?? 40\n      }\n    };\n  }\n\n  return {\n    json: {\n      ...current,\n      form_type: 'external_landing_page',\n      landing_page_url: landingPageUrl,\n      skip_html_fetch: !landingPageUrl\n    }\n  };\n});"
       },
-      "id": "1d41130a-b645-4f30-8896-b92f42e22284",
+      "id": "a445c51c-11d5-49f4-b23e-8fa2487f8b0b",
       "name": "Prepare Landing Page Extraction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3660,
-        -320
+        0,
+        208
       ]
     },
     {
@@ -285,49 +284,48 @@
           "timeout": 10000
         }
       },
-      "id": "0edfa5dc-670f-4751-a958-cf596c182700",
+      "id": "0dc086c0-eb03-4ea5-a134-8fbec3436243",
       "name": "Fetch Landing Page HTML",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        4060,
-        -220
+        400,
+        304
       ],
       "onError": "continueErrorHandling"
     },
     {
       "parameters": {
-        "jsCode": "const currentItems = $input.all();\n\nlet checkNativeItems = [];\ntry {\n  checkNativeItems = $('Check Native Form').all(1);\n} catch (_) {\n  try {\n    checkNativeItems = $('Check Native Form').all();\n  } catch (_) {\n    checkNativeItems = [];\n  }\n}\n\nconst extractText = (m, fallback) => (m ? m[1].replace(/<[^>]*>?/gm, '').trim() : fallback);\n\nreturn currentItems.map((item, index) => {\n  const current = item.json || {};\n  const pairedIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : index;\n  const upstream = (checkNativeItems[pairedIndex] && checkNativeItems[pairedIndex].json) ? checkNativeItems[pairedIndex].json : current;\n\n  const rawHtml = current.data ?? current.body ?? '';\n  const html = typeof rawHtml === 'string' ? rawHtml : String(rawHtml || '');\n\n  if (!html && upstream.skip_html_fetch !== true) {\n    return {\n      json: {\n        ...upstream,\n        landing_page_title: 'Erreur: Page non accessible',\n        form_type: 'error',\n        form_fields_json: '',\n        form_total_fields: 0,\n        form_required_fields: 0,\n        form_optional_fields: 0,\n        form_has_email: false,\n        email_field_name: '',\n        form_has_phone: false,\n        phone_field_name: '',\n        form_has_birth_date: false,\n        birth_date_field_name: '',\n        form_has_postal_code: false,\n        postal_code_field_name: '',\n        form_has_social_status: false,\n        social_status_field_name: '',\n        cta_text: '',\n        estimated_completion_time: ''\n      }\n    };\n  }\n\n  const h1Match = html.match(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/i);\n  const h2Match = html.match(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/i);\n  const pMatch = html.match(/<p[^>]*>([\\s\\S]*?)<\\/p>/i);\n\n  const landing_page_title = extractText(h1Match, 'Pas de titre');\n  const landing_page_subtitle = extractText(h2Match, '');\n  const landing_page_promise = extractText(pMatch, '').substring(0, 150);\n\n  const formFields = [];\n  for (const m of html.matchAll(/<input[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    const t = (m[0].match(/type=[\"']([^\"']*)[\"']/i) || [, 'text'])[1].toLowerCase();\n    if (n && t !== 'hidden' && t !== 'submit') formFields.push({ name: n, type: t, required: /required/i.test(m[0]) });\n  }\n  for (const m of html.matchAll(/<select[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    if (n) formFields.push({ name: n, type: 'select', required: /required/i.test(m[0]) });\n  }\n\n  const flags = { email: false, phone: false, birth: false, postal: false, social: false };\n  const names = { email: '', phone: '', birth: '', postal: '', social: '' };\n\n  formFields.forEach((f) => {\n    const n = (f.name || '').toLowerCase();\n    if (!flags.email && (n.includes('email') || f.type === 'email' || n.includes('mail'))) { flags.email = true; names.email = f.name; }\n    if (!flags.phone && (n.includes('phone') || n.includes('tel') || f.type === 'tel')) { flags.phone = true; names.phone = f.name; }\n    if (!flags.birth && (n.includes('birth') || n.includes('date') || n.includes('age') || n.includes('naissance'))) { flags.birth = true; names.birth = f.name; }\n    if (!flags.postal && (n.includes('postal') || n.includes('code') || n.includes('zip') || n.includes('cp'))) { flags.postal = true; names.postal = f.name; }\n    if (!flags.social && (n.includes('status') || n.includes('regime') || n.includes('secu') || n.includes('situation'))) { flags.social = true; names.social = f.name; }\n  });\n\n  const ctaMatch = html.match(/<button[^>]*>([\\s\\S]*?)<\\/button>/i) || html.match(/<input[^>]*type=[\"']submit[\"'][^>]*value=[\"']([^\"']*)[\"']/i);\n  let final_form_type = upstream.form_type || 'external_landing_page';\n  if (html.includes('meta.com') && final_form_type !== 'native_meta_form') final_form_type = 'native_meta_form';\n\n  const requiredCount = formFields.filter((f) => f.required).length;\n\n  return {\n    json: {\n      ...upstream,\n      landing_page_title: upstream.landing_page_title || landing_page_title,\n      landing_page_subtitle: upstream.landing_page_subtitle || landing_page_subtitle,\n      landing_page_promise: upstream.landing_page_promise || landing_page_promise,\n      form_type: final_form_type,\n      form_fields_json: upstream.form_fields_json || JSON.stringify(formFields),\n      form_total_fields: upstream.form_total_fields ?? formFields.length,\n      form_required_fields: upstream.form_required_fields ?? requiredCount,\n      form_optional_fields: upstream.form_optional_fields ?? (formFields.length - requiredCount),\n      form_has_email: upstream.form_has_email ?? flags.email,\n      email_field_name: upstream.email_field_name || names.email,\n      form_has_phone: upstream.form_has_phone ?? flags.phone,\n      phone_field_name: upstream.phone_field_name || names.phone,\n      form_has_birth_date: upstream.form_has_birth_date ?? flags.birth,\n      birth_date_field_name: upstream.birth_date_field_name || names.birth,\n      form_has_postal_code: upstream.form_has_postal_code ?? flags.postal,\n      postal_code_field_name: upstream.postal_code_field_name || names.postal,\n      form_has_social_status: upstream.form_has_social_status ?? flags.social,\n      social_status_field_name: upstream.social_status_field_name || names.social,\n      cta_text: upstream.cta_text || extractText(ctaMatch, 'Envoyer'),\n      estimated_completion_time: upstream.estimated_completion_time || `${Math.round(formFields.length * 0.5 + 0.5)} min`\n    }\n  };\n});"
+        "jsCode": "const currentItems = $input.all();\n\nlet checkNativeItems = [];\ntry {\n  checkNativeItems = $('Check Native Form').all(1);\n} catch (_) {\n  try {\n    checkNativeItems = $('Check Native Form').all();\n  } catch (_) {\n    checkNativeItems = [];\n  }\n}\n\nconst extractText = (m, fallback) => (m ? m[1].replace(/<[^>]*>?/gm, '').trim() : fallback);\n\nreturn currentItems.map((item, index) => {\n  const current = item.json || {};\n  const pairedIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : index;\n  const upstream = (checkNativeItems[pairedIndex] && checkNativeItems[pairedIndex].json) ? checkNativeItems[pairedIndex].json : current;\n\n  const rawHtml = current.data ?? current.body ?? '';\n  const html = typeof rawHtml === 'string' ? rawHtml : String(rawHtml || '');\n\n  if (!html && upstream.skip_html_fetch !== true) {\n    return {\n      json: {\n        ...upstream,\n        landing_page_title: 'Erreur: Page non accessible',\n        form_type: 'error',\n        form_fields_json: '',\n        form_total_fields: 0,\n        form_required_fields: 0,\n        form_optional_fields: 0,\n        form_has_email: false,\n        email_field_name: '',\n        form_has_phone: false,\n        phone_field_name: '',\n        form_has_birth_date: false,\n        birth_date_field_name: '',\n        form_has_postal_code: false,\n        postal_code_field_name: '',\n        form_has_social_status: false,\n        social_status_field_name: '',\n        cta_text: '',\n        estimated_completion_time: ''\n      }\n    };\n  }\n\n  const h1Match = html.match(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/i);\n  const h2Match = html.match(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/i);\n  const pMatch = html.match(/<p[^>]*>([\\s\\S]*?)<\\/p>/i);\n\n  const landing_page_title = extractText(h1Match, 'Pas de titre');\n  const landing_page_subtitle = extractText(h2Match, '');\n  const landing_page_promise = extractText(pMatch, '').substring(0, 150);\n\n  const formFields = [];\n  for (const m of html.matchAll(/<input[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    const t = (m[0].match(/type=[\"']([^\"']*)[\"']/i) || [, 'text'])[1].toLowerCase();\n    if (n && t !== 'hidden' && t !== 'submit') formFields.push({ name: n, type: t, required: /required/i.test(m[0]) });\n  }\n  for (const m of html.matchAll(/<select[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    if (n) formFields.push({ name: n, type: 'select', required: /required/i.test(m[0]) });\n  }\n\n  const flags = { email: false, phone: false, birth: false, postal: false, social: false };\n  const names = { email: '', phone: '', birth: '', postal: '', social: '' };\n\n  formFields.forEach((f) => {\n    const n = (f.name || '').toLowerCase();\n    if (!flags.email && (n.includes('email') || f.type === 'email' || n.includes('mail'))) { flags.email = true; names.email = f.name; }\n    if (!flags.phone && (n.includes('phone') || n.includes('tel') || f.type === 'tel')) { flags.phone = true; names.phone = f.name; }\n    if (!flags.birth && (n.includes('birth') || n.includes('date') || n.includes('age') || n.includes('naissance'))) { flags.birth = true; names.birth = f.name; }\n    if (!flags.postal && (n.includes('postal') || n.includes('code') || n.includes('zip') || n.includes('cp'))) { flags.postal = true; names.postal = f.name; }\n    if (!flags.social && (n.includes('status') || n.includes('regime') || n.includes('secu') || n.includes('situation'))) { flags.social = true; names.social = f.name; }\n  });\n\n  const ctaMatch = html.match(/<button[^>]*>([\\s\\S]*?)<\\/button>/i) || html.match(/<input[^>]*type=[\"']submit[\"'][^>]*value=[\"']([^\"']*)[\"']/i);\n  const final_form_type = upstream.final_form_type || upstream.form_type || 'external_landing_page';\n\n  const requiredCount = formFields.filter((f) => f.required).length;\n\n  return {\n    json: {\n      ...upstream,\n      landing_page_title: upstream.landing_page_title || landing_page_title,\n      landing_page_subtitle: upstream.landing_page_subtitle || landing_page_subtitle,\n      landing_page_promise: upstream.landing_page_promise || landing_page_promise,\n      form_type: final_form_type,\n      form_fields_json: upstream.form_fields_json || JSON.stringify(formFields),\n      form_total_fields: upstream.form_total_fields ?? formFields.length,\n      form_required_fields: upstream.form_required_fields ?? requiredCount,\n      form_optional_fields: upstream.form_optional_fields ?? (formFields.length - requiredCount),\n      form_has_email: upstream.form_has_email ?? flags.email,\n      email_field_name: upstream.email_field_name || names.email,\n      form_has_phone: upstream.form_has_phone ?? flags.phone,\n      phone_field_name: upstream.phone_field_name || names.phone,\n      form_has_birth_date: upstream.form_has_birth_date ?? flags.birth,\n      birth_date_field_name: upstream.birth_date_field_name || names.birth,\n      form_has_postal_code: upstream.form_has_postal_code ?? flags.postal,\n      postal_code_field_name: upstream.postal_code_field_name || names.postal,\n      form_has_social_status: upstream.form_has_social_status ?? flags.social,\n      social_status_field_name: upstream.social_status_field_name || names.social,\n      cta_text: upstream.cta_text || extractText(ctaMatch, 'Envoyer'),\n      estimated_completion_time: upstream.estimated_completion_time || `${Math.round(formFields.length * 0.5 + 0.5)} min`\n    }\n  };\n});"
       },
-      "id": "27a441cc-506b-45c4-9741-c9ed850792e2",
+      "id": "3a9a3d3a-79de-4376-b9a8-e0fe844664b9",
       "name": "Parse Landing Page Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4260,
-        -220
+        608,
+        304
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "Tu es un expert senior CRO + lead generation pour mutuelle sant en France.\nAnalyse le tunnel (formulaire natif Meta ou landing externe) pour un courtier franais.\n\nRgles:\n- Ne pas inventer dinformations.\n- Sparer faits observables et interprtations.\n- Signaler les donnes manquantes.\n- Garder une sortie JSON stricte.\n\nDonnes:\nTitre: {{ $json.landing_page_title }}\nPromesse: {{ $json.landing_page_promise }}\nIntro formulaire: {{ $json.landing_page_intro_text || \"N/A\" }}\nType formulaire: {{ $json.form_type }}\nTotal champs: {{ $json.form_total_fields }}\nChamps obligatoires: {{ $json.form_required_fields }}\nEmail: {{ $json.form_has_email }}\nTlphone: {{ $json.form_has_phone }}\nNaissance: {{ $json.form_has_birth_date }}\nCode postal: {{ $json.form_has_postal_code }}\nSituation sociale: {{ $json.form_has_social_status }}\nCTA: {{ $json.cta_text }}\nTemps estim: {{ $json.estimated_completion_time }}\n\nContexte march FR mutuelle:\n- Le tlphone est souvent indispensable pour qualification / rappel conseiller\n- Trop de champs dun coup rduit la conversion\n- Cohrence promesse pub -> formulaire -> page est critique\n\nRetourne UNIQUEMENT ce JSON:\n{\n  \"tunnel_quality_score\": 0,\n  \"tunnel_friction_level\": \"low|medium|high\",\n  \"tunnel_friction_reasons\": [\"string\"],\n  \"tunnel_recommendations\": [\"string\"],\n  \"tunnel_estimated_conversion_rate\": 0\n}\n",
-        "hasOutputParser": false,
+        "text": "Tu es un expert senior CRO/leadgen pour tunnels mutuelle sant? en France.\nAnalyse le tunnel (Meta native form ou landing page externe) avec une logique de conversion r?aliste.\n\nR?gles:\n- Pas d'invention de donn?es.\n- Utilise les signaux disponibles, puis inf?re de fa?on raisonnable et utile.\n- ?vite les r?ponses g?n?riques; donne des causes et actions concr?tes.\n- Retour strict en JSON uniquement.\n\nDonn?es:\nTitre: {{ $json.landing_page_title }}\nPromesse: {{ $json.landing_page_promise }}\nIntro formulaire: {{ $json.landing_page_intro_text || \"N/A\" }}\nType formulaire: {{ $json.form_type }}\nTotal champs: {{ $json.form_total_fields }}\nChamps obligatoires: {{ $json.form_required_fields }}\nEmail: {{ $json.form_has_email }}\nT?l?phone: {{ $json.form_has_phone }}\nDate de naissance: {{ $json.form_has_birth_date }}\nCode postal: {{ $json.form_has_postal_code }}\nSituation sociale: {{ $json.form_has_social_status }}\nCTA: {{ $json.cta_text }}\nTemps estim?: {{ $json.estimated_completion_time }}\n\nGrille d'?valuation (obligatoire):\n- Friction formulaire: nombre de champs, champs obligatoires, effort per?u.\n- Qualification commerciale: pr?sence t?l?phone/rappel.\n- Clart? conversion: promesse, intro, CTA, coh?rence annonce -> formulaire/LP.\n- R?assurance: s?curit?, confidentialit?, cr?dibilit?, conformit? per?ue.\n\nClassification tunnel_friction_level:\n- low: friction faible, parcours clair, effort limit?.\n- medium: friction mod?r?e, points bloquants corrigeables.\n- high: friction forte, risque d'abandon ?lev?.\n\nContraintes de sortie:\n- tunnel_friction_reasons: 3 ? 5 raisons sp?cifiques au cas.\n- tunnel_recommendations: 3 ? 6 actions concr?tes, prioris?es par impact.\n- tunnel_estimated_conversion_rate: entier r?aliste (0-100), coh?rent avec la friction.\n  Rep?res utiles:\n  - native simple: souvent 25-45\n  - native complexe: 15-30\n  - landing externe optimis?e: 12-30\n  - landing externe friction forte: 5-15\n\nRetourne UNIQUEMENT ce JSON:\n{\n  \"tunnel_quality_score\": 0,\n  \"tunnel_friction_level\": \"low|medium|high\",\n  \"tunnel_friction_reasons\": [\"string\"],\n  \"tunnel_recommendations\": [\"string\"],\n  \"tunnel_estimated_conversion_rate\": 0\n}",
         "messages": {
           "messageValues": [
             {
-              "message": "Tu es un consultant senior conversion mutuelle sant France. Tes sorties sont concrtes, non-hallucines, et orientes action."
+              "message": "Tu es un consultant conversion senior sp?cialis? mutuelle sant? France. Tu fournis des diagnostics pr?cis et des recommandations actionnables imm?diatement."
             }
           ]
         }
       },
-      "id": "7dd19e5f-8442-4f46-9705-f2431169d4bd",
+      "id": "fb055a87-7709-4ccf-81d5-c535012a8f04",
       "name": "Analyze Tunnel Quality",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
       "position": [
-        4460,
-        -220
+        800,
+        304
       ]
     },
     {
@@ -338,14 +336,14 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        4460,
-        -420
+        800,
+        96
       ],
-      "id": "b5e56e36-b24e-4e88-b88e-8ce0cbe2d560",
+      "id": "04683c78-df2d-443f-9d17-bf55ce7e966c",
       "name": "OpenRouter Chat Model (Tunnel)",
       "credentials": {
         "openRouterApi": {
-          "id": "vbr3DBrq4MZoqQmh",
+          "id": "a0VcSKaHUEr5b2Lt",
           "name": "OpenRouter account"
         }
       }
@@ -354,14 +352,14 @@
       "parameters": {
         "jsCode": "const defaults = {\n  tunnel_quality_score: 0,\n  tunnel_friction_level: 'unknown',\n  tunnel_friction_reasons: '',\n  tunnel_recommendations: '',\n  tunnel_estimated_conversion_rate: 0\n};\n\nconst items = $input.all();\n\nconst safeAll = (nodeName) => {\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) { return []; }\n};\n\nconst parseSources = [\n  ...safeAll('Parse Landing Page Content'),\n  ...safeAll('Prepare Landing Page Extraction')\n];\n\nconst byAdId = new Map();\nfor (const s of parseSources) {\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') {\n    byAdId.set(String(s.ad_id), s);\n  }\n}\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n  try { return JSON.parse(trimmed); } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try { return JSON.parse(match[0]); } catch (_) { return null; }\n  }\n};\n\nconst normalize = (current) => {\n  let tunnelData = { ...defaults };\n  let source = current.output ?? current;\n\n  if (typeof source === 'string') {\n    const parsed = parsePossibleJson(source);\n    source = parsed || source;\n  }\n\n  if (source && typeof source === 'object' && !Array.isArray(source)) {\n    tunnelData = { ...tunnelData, ...source };\n  }\n\n  const reasons = Array.isArray(tunnelData.tunnel_friction_reasons)\n    ? tunnelData.tunnel_friction_reasons.join(', ')\n    : (tunnelData.tunnel_friction_reasons || '');\n\n  const recommendations = Array.isArray(tunnelData.tunnel_recommendations)\n    ? tunnelData.tunnel_recommendations.join(', ')\n    : (tunnelData.tunnel_recommendations || '');\n\n  return {\n    tunnel_quality_score: tunnelData.tunnel_quality_score ?? 0,\n    tunnel_friction_level: tunnelData.tunnel_friction_level || 'unknown',\n    tunnel_friction_reasons: reasons,\n    tunnel_recommendations: recommendations,\n    tunnel_estimated_conversion_rate: tunnelData.tunnel_estimated_conversion_rate ?? 0\n  };\n};\n\nconst pickSource = (item, index) => {\n  const current = item.json || {};\n  if (current.ad_id || current.brand || current.form_type || current.landing_page_url) return current;\n\n  const currentOutput = current.output;\n  if (currentOutput && typeof currentOutput === 'object' && !Array.isArray(currentOutput)) {\n    const id = currentOutput.ad_id;\n    if (id !== undefined && id !== null) {\n      const key = String(id);\n      if (byAdId.has(key)) return byAdId.get(key);\n    }\n  }\n\n  const pairIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : null;\n  if (typeof pairIndex === 'number' && parseSources[pairIndex]) return parseSources[pairIndex];\n\n  return parseSources[index] || {};\n};\n\nreturn items.map((item, index) => {\n  const current = item.json || {};\n  const source = pickSource(item, index);\n  const normalized = normalize(current);\n\n  return {\n    json: {\n      ...source,\n      ...current,\n      ...normalized,\n      final_form_type: current.final_form_type || source.final_form_type || current.form_type || source.form_type || 'external_landing_page',\n      form_type: current.form_type || source.form_type || current.final_form_type || source.final_form_type || 'external_landing_page',\n      pipeline_item_id: current.pipeline_item_id || source.pipeline_item_id || '',\n      ad_id: current.ad_id || source.ad_id || '',\n      brand: current.brand || source.brand || '',\n      landing_page_url: current.landing_page_url || source.landing_page_url || source.website_url || current.website_url || '',\n      headline: current.headline || source.headline || '',\n      body_text: current.body_text || source.body_text || '',\n      visual_url: current.visual_url || source.visual_url || ''\n    }\n  };\n});"
       },
-      "id": "9baaeec2-f857-4ad0-a2f9-afe7092cea01",
+      "id": "fa4916d2-26b7-41f3-a589-892347664d10",
       "icon": "fa:code",
       "name": "Decompose Tunnel JSON",
       "type": "n8n-nodes-base.code",
       "typeVersion": 1,
       "position": [
-        4660,
-        -220
+        1008,
+        304
       ]
     },
     {
@@ -388,24 +386,24 @@
         },
         "options": {}
       },
-      "id": "b5c4d9a0-1b26-4475-b9e0-e85c2d789a72",
+      "id": "4d1475ed-fac9-4d2a-aa2c-67ef3bc87edf",
       "name": "Check Native Form",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3860,
-        -320
+        208,
+        208
       ]
     },
     {
       "parameters": {},
-      "id": "95a67dec-3277-4a69-9130-3f2125ec10f0",
+      "id": "0df399e1-48db-441a-a112-2d65d01fae2f",
       "name": "Merge Form Data",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        4860,
-        -120
+        1200,
+        400
       ]
     },
     {
@@ -415,75 +413,75 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        4460,
-        -520
+        800,
+        0
       ],
-      "id": "b6267e5d-1c75-402c-a61e-6b162959504d",
+      "id": "09580702-0a43-4e25-a54f-93bad791b380",
       "name": "Structured Output Parser1"
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\n\nconst safeAll = (nodeName, outputIndex) => {\n  try { return $(nodeName).all(outputIndex).map((x) => x.json || {}); } catch (_) {}\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) {}\n  return [];\n};\n\nconst sourceItems = safeAll('Fix Video MIME');\nconst byPipelineId = new Map();\nconst byAdId = new Map();\nfor (const s of sourceItems) {\n  if (s && s.pipeline_item_id) byPipelineId.set(String(s.pipeline_item_id), s);\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') byAdId.set(String(s.ad_id), s);\n}\n\nreturn items.map((item, index) => {\n  const current = item.json || {};\n  const candidates = current.candidates;\n  const response = (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0] && candidates[0].content.parts[0].text)\n    || current.text\n    || 'No content';\n\n  let source = null;\n  if (current.pipeline_item_id && byPipelineId.has(String(current.pipeline_item_id))) source = byPipelineId.get(String(current.pipeline_item_id));\n  if (!source && current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) source = byAdId.get(String(current.ad_id));\n  if (!source) {\n    const pairedIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : index;\n    source = sourceItems[pairedIndex] || null;\n  }\n\n  const original = source || current;\n  return { json: { ...original, video_analysis: response } };\n});"
       },
-      "id": "5e03c455-19ea-464c-b10c-a710c8485e1e",
+      "id": "b9aeaa6e-6d36-43e3-98e0-fbdaf4c7cba8",
       "name": "Keep Ad Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2060,
-        -420
+        -1600,
+        96
       ]
     },
     {
       "parameters": {
         "jsCode": "return $input.all().map((item) => ({\n  json: {\n    ...(item.json || {}),\n    video_analysis: 'Pas de vido'\n  }\n}));"
       },
-      "id": "a58e7d3d-006d-4c1f-bc3c-bfcf269784f5",
+      "id": "b3d1f090-3664-4c4f-83dc-6986635a653d",
       "name": "No Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1260,
-        -220
+        -2400,
+        304
       ]
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\n\nconst safeAll = (nodeName, outputIndex) => {\n  try { return $(nodeName).all(outputIndex).map((x) => x.json || {}); } catch (_) {}\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) {}\n  return [];\n};\n\nconst sourceItems = safeAll('Check if Has Image', 0);\nconst byPipelineId = new Map();\nconst byAdId = new Map();\nfor (const s of sourceItems) {\n  if (s && s.pipeline_item_id) byPipelineId.set(String(s.pipeline_item_id), s);\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') byAdId.set(String(s.ad_id), s);\n}\n\nreturn items.map((item, index) => {\n  const current = item.json || {};\n  const candidates = current.candidates;\n  const response = (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0] && candidates[0].content.parts[0].text)\n    || current.text\n    || 'No content';\n\n  let source = null;\n  if (current.pipeline_item_id && byPipelineId.has(String(current.pipeline_item_id))) source = byPipelineId.get(String(current.pipeline_item_id));\n  if (!source && current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) source = byAdId.get(String(current.ad_id));\n  if (!source) {\n    const pairedIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : index;\n    source = sourceItems[pairedIndex] || null;\n  }\n\n  const original = source || current;\n  return { json: { ...original, image_analysis: response } };\n});"
       },
-      "id": "de82a1ab-b340-4460-b168-5f06127d3b28",
+      "id": "31d4e3b2-db7f-49c6-9829-04865831d8e2",
       "name": "Keep Ad Image",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2860,
-        -420
+        -800,
+        96
       ]
     },
     {
       "parameters": {
         "jsCode": "return $input.all().map((item) => ({\n  json: {\n    ...(item.json || {}),\n    image_analysis: 'Pas d\\'image'\n  }\n}));"
       },
-      "id": "2d062193-7cb4-44f1-b2fa-dd47efb41441",
+      "id": "12673f00-714c-4cdb-bcd4-5f1ddc4eeef1",
       "name": "No Image",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2660,
-        -220
+        -1008,
+        304
       ]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n  try { return JSON.parse(trimmed); } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try { return JSON.parse(match[0]); } catch (_) { return null; }\n  }\n};\n\nconst safeAll = (nodeName) => {\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) { return []; }\n};\n\nconst sourcePool = [\n  ...safeAll('Keep Ad Video'),\n  ...safeAll('Keep Ad Image'),\n  ...safeAll('No Video'),\n  ...safeAll('No Image')\n];\n\nconst byPipelineId = new Map();\nconst byAdId = new Map();\nfor (const s of sourcePool) {\n  if (s && s.pipeline_item_id) byPipelineId.set(String(s.pipeline_item_id), s);\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') byAdId.set(String(s.ad_id), s);\n}\n\nconst pickSource = (current, item) => {\n  if (current.pipeline_item_id && byPipelineId.has(String(current.pipeline_item_id))) return byPipelineId.get(String(current.pipeline_item_id));\n  if (current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) return byAdId.get(String(current.ad_id));\n  const pairIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : null;\n  if (typeof pairIndex === 'number' && sourcePool[pairIndex]) {\n    const candidate = sourcePool[pairIndex];\n    const samePipeline = current.pipeline_item_id && candidate.pipeline_item_id && String(current.pipeline_item_id) === String(candidate.pipeline_item_id);\n    const sameAd = current.ad_id && candidate.ad_id && String(current.ad_id) === String(candidate.ad_id);\n    if (samePipeline || sameAd) return candidate;\n  }\n  return current;\n};\n\nconst toAiOutput = (current) => {\n  if (current.output && typeof current.output === 'object' && !Array.isArray(current.output)) return current.output;\n  if (typeof current.output === 'string') return parsePossibleJson(current.output) || { raw_text: current.output };\n  if (typeof current.text === 'string') return parsePossibleJson(current.text) || { raw_text: current.text };\n  if (typeof current.response === 'string') return parsePossibleJson(current.response) || { raw_text: current.response };\n  return {};\n};\n\nconst pickText = (...vals) => {\n  for (const v of vals) {\n    if (typeof v === 'string' && v.trim() !== '') return v.trim();\n  }\n  return '';\n};\n\nconst extractFromRawText = (raw, key) => {\n  if (typeof raw !== 'string' || !raw) return '';\n  const re = new RegExp('\\\"' + key + '\\\"\\s*:\\s*\\\"([\\s\\S]*?)\\\"', 'i');\n  const m = raw.match(re);\n  if (!m || !m[1]) return '';\n  return m[1].trim();\n};\n\nreturn items.map((item) => {\n  const current = item.json || {};\n  const source = pickSource(current, item);\n  const ai = toAiOutput(current);\n  const raw = (typeof current.text === 'string' && current.text)\n    || (typeof current.output === 'string' && current.output)\n    || (ai && typeof ai.raw_text === 'string' ? ai.raw_text : '');\n\n  return {\n    json: {\n      ...source,\n      ...current,\n      output: ai,\n      pipeline_item_id: current.pipeline_item_id || source.pipeline_item_id || '',\n      ad_id: current.ad_id || source.ad_id || '',\n      hook_type: pickText(ai.hook_type, extractFromRawText(raw, 'hook_type'), current.hook_type, source.hook_type),\n      why_it_works: pickText(ai.why_it_works, extractFromRawText(raw, 'why_it_works'), current.why_it_works, source.why_it_works),\n      takeaway_1: pickText(ai.takeaway_1, extractFromRawText(raw, 'takeaway_1'), current.takeaway_1, source.takeaway_1),\n      takeaway_2: pickText(ai.takeaway_2, extractFromRawText(raw, 'takeaway_2'), current.takeaway_2, source.takeaway_2),\n      takeaway_3: pickText(ai.takeaway_3, extractFromRawText(raw, 'takeaway_3'), current.takeaway_3, source.takeaway_3),\n      hook_de_sortie: pickText(ai.hook_de_sortie, extractFromRawText(raw, 'hook_de_sortie'), current.hook_de_sortie, source.hook_de_sortie),\n      tunnel_friction_reasons: pickText(ai.tunnel_friction_reasons, extractFromRawText(raw, 'tunnel_friction_reasons'), current.tunnel_friction_reasons, source.tunnel_friction_reasons),\n      tunnel_recommendations: pickText(ai.tunnel_recommendations, extractFromRawText(raw, 'tunnel_recommendations'), current.tunnel_recommendations, source.tunnel_recommendations)\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n  try { return JSON.parse(trimmed); } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try { return JSON.parse(match[0]); } catch (_) { return null; }\n  }\n};\n\nconst safeAll = (nodeName) => {\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) { return []; }\n};\n\nconst sourcePool = safeAll('Merge Image Streams');\nconst byPipelineId = new Map();\nconst byAdId = new Map();\nfor (const s of sourcePool) {\n  if (s && s.pipeline_item_id) byPipelineId.set(String(s.pipeline_item_id), s);\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') byAdId.set(String(s.ad_id), s);\n}\n\nconst pickSource = (current, item) => {\n  if (current.pipeline_item_id && byPipelineId.has(String(current.pipeline_item_id))) return byPipelineId.get(String(current.pipeline_item_id));\n  if (current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) return byAdId.get(String(current.ad_id));\n  const pairIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : null;\n  if (typeof pairIndex === 'number' && sourcePool[pairIndex]) return sourcePool[pairIndex];\n  return current;\n};\n\nconst toAiOutput = (current) => {\n  if (current.output && typeof current.output === 'object' && !Array.isArray(current.output)) return current.output;\n  if (typeof current.output === 'string') return parsePossibleJson(current.output) || { raw_text: current.output };\n  if (typeof current.text === 'string') return parsePossibleJson(current.text) || { raw_text: current.text };\n  if (typeof current.response === 'string') return parsePossibleJson(current.response) || { raw_text: current.response };\n  return {};\n};\n\nconst pickText = (...vals) => {\n  for (const v of vals) {\n    if (typeof v === 'string' && v.trim() !== '') return v.trim();\n  }\n  return '';\n};\n\nconst extractFromRawText = (raw, key) => {\n  if (typeof raw !== 'string' || !raw) return '';\n  const re = new RegExp('\\\"' + key + '\\\"\\s*:\\s*\\\"([\\s\\S]*?)\\\"', 'i');\n  const m = raw.match(re);\n  if (!m || !m[1]) return '';\n  return m[1].trim();\n};\n\nreturn items.map((item) => {\n  const current = item.json || {};\n  const source = pickSource(current, item);\n  const ai = toAiOutput(current);\n  const raw = (typeof current.text === 'string' && current.text)\n    || (typeof current.output === 'string' && current.output)\n    || (ai && typeof ai.raw_text === 'string' ? ai.raw_text : '');\n\n  return {\n    json: {\n      ...source,\n      ...current,\n      output: ai,\n      pipeline_item_id: current.pipeline_item_id || source.pipeline_item_id || '',\n      ad_id: current.ad_id || source.ad_id || '',\n      hook_type: pickText(ai.hook_type, extractFromRawText(raw, 'hook_type'), current.hook_type, source.hook_type),\n      why_it_works: pickText(ai.why_it_works, extractFromRawText(raw, 'why_it_works'), current.why_it_works, source.why_it_works),\n      takeaway_1: pickText(ai.takeaway_1, extractFromRawText(raw, 'takeaway_1'), current.takeaway_1, source.takeaway_1),\n      takeaway_2: pickText(ai.takeaway_2, extractFromRawText(raw, 'takeaway_2'), current.takeaway_2, source.takeaway_2),\n      takeaway_3: pickText(ai.takeaway_3, extractFromRawText(raw, 'takeaway_3'), current.takeaway_3, source.takeaway_3),\n      hook_de_sortie: pickText(ai.hook_de_sortie, extractFromRawText(raw, 'hook_de_sortie'), current.hook_de_sortie, source.hook_de_sortie),\n      tunnel_friction_reasons: pickText(ai.tunnel_friction_reasons, extractFromRawText(raw, 'tunnel_friction_reasons'), current.tunnel_friction_reasons, source.tunnel_friction_reasons),\n      tunnel_recommendations: pickText(ai.tunnel_recommendations, extractFromRawText(raw, 'tunnel_recommendations'), current.tunnel_recommendations, source.tunnel_recommendations)\n    }\n  };\n});"
       },
-      "id": "a4673f24-0da8-46c6-9b4c-574fabd7c4ef",
+      "id": "2cccc5ac-0346-4d8a-8d0b-7701e4fd0810",
       "name": "Merge Exec Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3460,
-        -320
+        -208,
+        208
       ]
     },
     {
@@ -491,26 +489,26 @@
         "url": "={{ $json.video_url }}",
         "options": {}
       },
-      "id": "ed345f95-394d-4c8f-8069-862d3f019eec",
+      "id": "ae7d4037-23e0-49fe-bc7b-11c028657666",
       "name": "Download Video",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1460,
-        -420
+        -2208,
+        96
       ]
     },
     {
       "parameters": {
         "jsCode": "return $input.all().map((item) => {\n  const binaryData = item.binary.data;\n\n  if (!binaryData) {\n    return { json: item.json || {} };\n  }\n\n  return {\n    json: item.json || {},\n    binary: {\n      data: {\n        ...binaryData,\n        mimeType: 'video/mp4',\n        fileExtension: 'mp4',\n        fileName: binaryData.fileName || 'video.mp4'\n      }\n    }\n  };\n});"
       },
-      "id": "c8ab16cb-a65c-41c5-839d-7993ee6300c9",
+      "id": "d525913d-fc7a-4998-bf98-a85d32b9033c",
       "name": "Fix Video MIME",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1660,
-        -420
+        -2000,
+        96
       ]
     },
     {
@@ -567,13 +565,13 @@
         },
         "options": {}
       },
-      "id": "b18a1c1b-56a0-4691-a7fb-ac7683fd411d",
+      "id": "4e67369a-55ac-4261-a2d6-d4521d104ed2",
       "name": "Route by Form Type",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [
-        5060,
-        -320
+        1408,
+        208
       ]
     },
     {
@@ -589,7 +587,7 @@
             {
               "id": "ad_id_insertion",
               "name": "ad_id",
-              "value": "={{ $json.ad_id }}",
+              "value": "={{ String($json.ad_id || '') }}",
               "type": "string"
             },
             {
@@ -836,13 +834,13 @@
         },
         "options": {}
       },
-      "id": "94735767-14bf-4d1c-b85d-e142f88708ca",
+      "id": "5ff0fd6f-67fd-4bba-9855-6c54258072f1",
       "name": "Map Google Sheet (Native Form)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5260,
-        -420
+        1600,
+        96
       ]
     },
     {
@@ -872,18 +870,18 @@
         },
         "options": {}
       },
-      "id": "7728e82a-56a0-456d-ad3e-854cc6efeb2f",
+      "id": "0a74ecc8-925e-49d3-8342-f3f3dca31d90",
       "name": "Append Sheet (Native Form)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        5660,
-        -420
+        2000,
+        96
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "eJZWW0adrMPkSLlz",
-          "name": "Google Sheets account"
+          "id": "JxJaL8JEjCYnXxGe",
+          "name": "Google Sheets OAuth2 API"
         }
       }
     },
@@ -900,7 +898,7 @@
             {
               "id": "ad_id_insertion",
               "name": "ad_id",
-              "value": "={{ $json.ad_id }}",
+              "value": "={{ String($json.ad_id || '') }}",
               "type": "string"
             },
             {
@@ -1147,13 +1145,13 @@
         },
         "options": {}
       },
-      "id": "a9ea4ebc-a37c-42e3-b237-cb298d094eb0",
+      "id": "272b0e99-4a75-42d4-9054-caa79093348c",
       "name": "Map Google Sheet (External Format)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5260,
-        -220
+        1600,
+        304
       ]
     },
     {
@@ -1183,18 +1181,18 @@
         },
         "options": {}
       },
-      "id": "9a4a65b6-7595-407c-bbce-564e2725d0b8",
+      "id": "d5757c72-83cb-47b0-a87e-f60cc3e6954b",
       "name": "Append Sheet (External Format)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        5660,
-        -220
+        2000,
+        304
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "eJZWW0adrMPkSLlz",
-          "name": "Google Sheets account"
+          "id": "JxJaL8JEjCYnXxGe",
+          "name": "Google Sheets OAuth2 API"
         }
       }
     },
@@ -1202,78 +1200,74 @@
       "parameters": {
         "jsCode": "const items = $input.all();\n\nconst required = ['ad_id', 'brand', 'hook_type', 'landing_page_url', 'form_type'];\n\nreturn items.map((item) => {\n  const j = item.json || {};\n\n  const missing_required = required.filter((k) => {\n    const v = j[k];\n    return v === undefined || v === null || String(v).trim() === '';\n  });\n\n  return {\n    json: {\n      ...j,\n      __debug_sheet_payload: {\n        ad_id: j.ad_id || '',\n        brand: j.brand || '',\n        hook_type: j.hook_type || '',\n        why_it_works: j.why_it_works || '',\n        takeaway_1: j.takeaway_1 || '',\n        takeaway_2: j.takeaway_2 || '',\n        takeaway_3: j.takeaway_3 || '',\n        tunnel_friction_reasons: j.tunnel_friction_reasons || '',\n        tunnel_recommendations: j.tunnel_recommendations || '',\n        form_type: j.form_type || '',\n        landing_page_url: j.landing_page_url || ''\n      },\n      __debug_missing_required: missing_required,\n      __debug_ready_for_append: missing_required.length === 0\n    }\n  };\n});"
       },
-      "id": "ffcd18c6-0fb6-49dd-adf7-a0feae1b64f9",
+      "id": "fb692eb9-449a-4cac-8872-97854542a7f0",
       "name": "Debug External Sheet Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5460,
-        -220
+        1808,
+        304
       ]
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\n\nconst required = ['ad_id', 'brand', 'hook_type', 'landing_page_url', 'form_type'];\n\nreturn items.map((item) => {\n  const j = item.json || {};\n\n  const missing_required = required.filter((k) => {\n    const v = j[k];\n    return v === undefined || v === null || String(v).trim() === '';\n  });\n\n  return {\n    json: {\n      ...j,\n      __debug_sheet_payload: {\n        ad_id: j.ad_id || '',\n        brand: j.brand || '',\n        hook_type: j.hook_type || '',\n        why_it_works: j.why_it_works || '',\n        takeaway_1: j.takeaway_1 || '',\n        takeaway_2: j.takeaway_2 || '',\n        takeaway_3: j.takeaway_3 || '',\n        tunnel_friction_reasons: j.tunnel_friction_reasons || '',\n        tunnel_recommendations: j.tunnel_recommendations || '',\n        form_type: j.form_type || '',\n        landing_page_url: j.landing_page_url || ''\n      },\n      __debug_missing_required: missing_required,\n      __debug_ready_for_append: missing_required.length === 0\n    }\n  };\n});"
       },
-      "id": "cce9d98d-032a-453c-a5c8-81c4fac1a16d",
+      "id": "e729aabe-fdf5-4470-9619-048a1476a717",
       "name": "Debug Native Sheet Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5460,
-        -420
+        1808,
+        96
       ]
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\nconst seen = new Set();\nconst out = [];\n\nfor (const item of items) {\n  const j = item.json || {};\n  const videoUrl = typeof j.video_url === 'string' ? j.video_url.trim() : '';\n  const hasVideo = j.has_video === true || videoUrl !== '';\n  if (!hasVideo) continue;\n\n  const key = j.pipeline_item_id || j.ad_id || '';\n  if (key && seen.has(String(key))) continue;\n  if (key) seen.add(String(key));\n\n  out.push({ json: { ...j, has_video: true, video_url: videoUrl } });\n}\n\nreturn out;"
       },
-      "id": "aa99a254-9a60-4716-bbba-080b23c8d989",
+      "id": "2d9359ef-97d6-413a-86af-ef3f5838f4ff",
       "name": "Filter Video Branch (Strict)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1260,
-        -420
+        -2400,
+        96
       ]
     },
     {
-      "parameters": {
-        "mode": "append"
-      },
-      "id": "85625d7c-ea1a-41e9-b540-bfc121d76108",
+      "parameters": {},
+      "id": "4c1152ad-7718-43b3-9a74-31378f3d4a0e",
       "name": "Merge Video Streams",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        2260,
-        -320
+        -1408,
+        208
       ]
     },
     {
-      "parameters": {
-        "mode": "append"
-      },
-      "id": "646dbb60-cdbf-4bfb-9cf4-f531b32f3044",
+      "parameters": {},
+      "id": "30b21170-b836-4e2b-9e1e-3597efa92982",
       "name": "Merge Image Streams",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        3060,
-        -320
+        -608,
+        208
       ]
     },
     {
       "parameters": {
         "jsCode": "return $input.all().map(item => {\n  const j = item.json || {};\n\n  const finalType =\n    j.final_form_type ||\n    j.form_type ||\n    (j.landing_page_url ? 'external_landing_page' : 'native_meta_form');\n\n  return {\n    json: {\n      ...j,\n      final_form_type: finalType\n    }\n  };\n});"
       },
-      "id": "c8c1eadb-54b0-4fe5-858b-57d2aa6564ec",
+      "id": "670bface-bfa0-43a4-9b39-ad4f1824a06d",
       "name": "Normalize Form Type",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4860,
-        -320
+        1200,
+        208
       ]
     }
   ],
@@ -1429,7 +1423,6 @@
         ]
       ]
     },
-    "Merge Form Data": {},
     "Top 3 Ads": {
       "main": [
         [
@@ -1689,11 +1682,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "4030370b-975c-4681-8c6d-47e945a69101",
+  "versionId": "7c807d9c-efc1-49fe-83dd-22dbc7c39cbc",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "c5e7920f089fd5ee7878b71ef03b8fe47de274124ac23d1aaee5ed4505ce920f"
+    "instanceId": "9147bab77e48ab044ae0d387645c8588260d7e1d43e6ba06a2dc1d8c079a1ccf"
   },
-  "id": "H1s1QD0AcOEx0hKI",
+  "id": "amghJgE1ZIUjaTNV",
   "tags": []
 }
