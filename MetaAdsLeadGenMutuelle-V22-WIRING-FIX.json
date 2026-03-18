@@ -24,8 +24,8 @@
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 1,
       "position": [
-        -1488,
-        -208
+        0,
+        -320
       ],
       "webhookId": "1ffdeb08-ec24-453b-80c0-8bb9a9d52590"
     },
@@ -38,8 +38,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1296,
-        -208
+        220,
+        -320
       ]
     },
     {
@@ -56,8 +56,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -1104,
-        -208
+        440,
+        -320
       ]
     },
     {
@@ -69,8 +69,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -912,
-        -208
+        660,
+        -320
       ]
     },
     {
@@ -82,8 +82,8 @@
       "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        -752,
-        -208
+        860,
+        -320
       ]
     },
     {
@@ -115,8 +115,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -448,
-        -352
+        1060,
+        -320
       ]
     },
     {
@@ -137,8 +137,8 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1,
       "position": [
-        -256,
-        -464
+        1860,
+        -420
       ],
       "credentials": {
         "googlePalmApi": {
@@ -176,8 +176,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -448,
-        48
+        2460,
+        -320
       ]
     },
     {
@@ -199,8 +199,8 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1,
       "position": [
-        -256,
-        -64
+        2660,
+        -420
       ],
       "credentials": {
         "googlePalmApi": {
@@ -227,8 +227,8 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
       "position": [
-        848,
-        -352
+        3260,
+        -320
       ]
     },
     {
@@ -239,8 +239,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        48,
-        0
+        3260,
+        -520
       ],
       "id": "94c0bd93-2960-4ce6-8ea4-75eb14de02b9",
       "name": "OpenRouter Chat Model",
@@ -258,8 +258,8 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        192,
-        0
+        3260,
+        -620
       ],
       "id": "7e3522fb-7948-4f7c-8905-1526fff1aa5e",
       "name": "Structured Output Parser"
@@ -273,8 +273,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        592,
-        -208
+        3660,
+        -320
       ]
     },
     {
@@ -290,8 +290,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        992,
-        -96
+        4060,
+        -220
       ],
       "onError": "continueErrorHandling"
     },
@@ -304,8 +304,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1200,
-        -96
+        4260,
+        -220
       ]
     },
     {
@@ -326,8 +326,8 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
       "position": [
-        1392,
-        -96
+        4460,
+        -220
       ]
     },
     {
@@ -338,8 +338,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        1328,
-        0
+        4460,
+        -420
       ],
       "id": "b5e56e36-b24e-4e88-b88e-8ce0cbe2d560",
       "name": "OpenRouter Chat Model (Tunnel)",
@@ -360,8 +360,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 1,
       "position": [
-        1696,
-        -96
+        4660,
+        -220
       ]
     },
     {
@@ -393,8 +393,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        800,
-        -208
+        3860,
+        -320
       ]
     },
     {
@@ -404,8 +404,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        1920,
-        -208
+        4860,
+        -120
       ]
     },
     {
@@ -415,8 +415,8 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        1552,
-        112
+        4460,
+        -520
       ],
       "id": "b6267e5d-1c75-402c-a61e-6b162959504d",
       "name": "Structured Output Parser1"
@@ -430,8 +430,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -48,
-        -464
+        2060,
+        -420
       ]
     },
     {
@@ -443,8 +443,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -48,
-        -256
+        1260,
+        -220
       ]
     },
     {
@@ -456,8 +456,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -48,
-        -64
+        2860,
+        -420
       ]
     },
     {
@@ -469,21 +469,21 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -48,
-        144
+        2660,
+        -220
       ]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n  try { return JSON.parse(trimmed); } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try { return JSON.parse(match[0]); } catch (_) { return null; }\n  }\n};\n\nconst safeAll = (nodeName) => {\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) { return []; }\n};\n\nconst sourcePool = [\n  ...safeAll('Keep Ad Video'),\n  ...safeAll('Keep Ad Image'),\n  ...safeAll('No Image'),\n  ...safeAll('No Video'),\n  ...safeAll('Merge Image Streams')\n];\nconst byPipelineId = new Map();\nconst byAdId = new Map();\nfor (const s of sourcePool) {\n  if (s && s.pipeline_item_id) byPipelineId.set(String(s.pipeline_item_id), s);\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') byAdId.set(String(s.ad_id), s);\n}\n\nconst pickSource = (current, item, index) => {\n  if (current.pipeline_item_id && byPipelineId.has(String(current.pipeline_item_id))) return byPipelineId.get(String(current.pipeline_item_id));\n  if (current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) return byAdId.get(String(current.ad_id));\n  const pairIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : null;\n  if (typeof pairIndex === 'number' && sourcePool[pairIndex]) return sourcePool[pairIndex];\n  return sourcePool[index] || {};\n};\n\nconst toAiOutput = (current) => {\n  if (current.output && typeof current.output === 'object' && !Array.isArray(current.output)) return current.output;\n  if (typeof current.output === 'string') return parsePossibleJson(current.output) || { raw_text: current.output };\n  if (typeof current.text === 'string') return parsePossibleJson(current.text) || { raw_text: current.text };\n  if (typeof current.response === 'string') return parsePossibleJson(current.response) || { raw_text: current.response };\n  return {};\n};\n\nconst pickText = (...vals) => {\n  for (const v of vals) {\n    if (typeof v === 'string' && v.trim() !== '') return v.trim();\n  }\n  return '';\n};\n\nconst extractFromRawText = (raw, key) => {\n  if (typeof raw !== 'string' || !raw) return '';\n  const re = new RegExp('\\\"' + key + '\\\"\\s*:\\s*\\\"([\\s\\S]*?)\\\"', 'i');\n  const m = raw.match(re);\n  if (!m || !m[1]) return '';\n  return m[1].trim();\n};\n\nreturn items.map((item, index) => {\n  const current = item.json || {};\n  const source = pickSource(current, item, index);\n  const ai = toAiOutput(current);\n  const raw = (typeof current.text === 'string' && current.text)\n    || (typeof current.output === 'string' && current.output)\n    || (ai && typeof ai.raw_text === 'string' ? ai.raw_text : '');\n\n  return {\n    json: {\n      ...source,\n      ...current,\n      output: ai,\n      pipeline_item_id: current.pipeline_item_id || source.pipeline_item_id || '',\n      ad_id: current.ad_id || source.ad_id || '',\n      hook_type: pickText(ai.hook_type, extractFromRawText(raw, 'hook_type'), current.hook_type, source.hook_type),\n      why_it_works: pickText(ai.why_it_works, extractFromRawText(raw, 'why_it_works'), current.why_it_works, source.why_it_works),\n      takeaway_1: pickText(ai.takeaway_1, extractFromRawText(raw, 'takeaway_1'), current.takeaway_1, source.takeaway_1),\n      takeaway_2: pickText(ai.takeaway_2, extractFromRawText(raw, 'takeaway_2'), current.takeaway_2, source.takeaway_2),\n      takeaway_3: pickText(ai.takeaway_3, extractFromRawText(raw, 'takeaway_3'), current.takeaway_3, source.takeaway_3),\n      hook_de_sortie: pickText(ai.hook_de_sortie, extractFromRawText(raw, 'hook_de_sortie'), current.hook_de_sortie, source.hook_de_sortie),\n      tunnel_friction_reasons: pickText(ai.tunnel_friction_reasons, extractFromRawText(raw, 'tunnel_friction_reasons'), current.tunnel_friction_reasons, source.tunnel_friction_reasons),\n      tunnel_recommendations: pickText(ai.tunnel_recommendations, extractFromRawText(raw, 'tunnel_recommendations'), current.tunnel_recommendations, source.tunnel_recommendations)\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const trimmed = value.trim();\n  if (!trimmed) return null;\n  try { return JSON.parse(trimmed); } catch (_) {\n    const match = trimmed.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n    try { return JSON.parse(match[0]); } catch (_) { return null; }\n  }\n};\n\nconst safeAll = (nodeName) => {\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) { return []; }\n};\n\nconst sourcePool = [\n  ...safeAll('Keep Ad Video'),\n  ...safeAll('Keep Ad Image'),\n  ...safeAll('No Video'),\n  ...safeAll('No Image')\n];\n\nconst byPipelineId = new Map();\nconst byAdId = new Map();\nfor (const s of sourcePool) {\n  if (s && s.pipeline_item_id) byPipelineId.set(String(s.pipeline_item_id), s);\n  if (s && s.ad_id !== undefined && s.ad_id !== null && String(s.ad_id).trim() !== '') byAdId.set(String(s.ad_id), s);\n}\n\nconst pickSource = (current, item) => {\n  if (current.pipeline_item_id && byPipelineId.has(String(current.pipeline_item_id))) return byPipelineId.get(String(current.pipeline_item_id));\n  if (current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) return byAdId.get(String(current.ad_id));\n  const pairIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : null;\n  if (typeof pairIndex === 'number' && sourcePool[pairIndex]) {\n    const candidate = sourcePool[pairIndex];\n    const samePipeline = current.pipeline_item_id && candidate.pipeline_item_id && String(current.pipeline_item_id) === String(candidate.pipeline_item_id);\n    const sameAd = current.ad_id && candidate.ad_id && String(current.ad_id) === String(candidate.ad_id);\n    if (samePipeline || sameAd) return candidate;\n  }\n  return current;\n};\n\nconst toAiOutput = (current) => {\n  if (current.output && typeof current.output === 'object' && !Array.isArray(current.output)) return current.output;\n  if (typeof current.output === 'string') return parsePossibleJson(current.output) || { raw_text: current.output };\n  if (typeof current.text === 'string') return parsePossibleJson(current.text) || { raw_text: current.text };\n  if (typeof current.response === 'string') return parsePossibleJson(current.response) || { raw_text: current.response };\n  return {};\n};\n\nconst pickText = (...vals) => {\n  for (const v of vals) {\n    if (typeof v === 'string' && v.trim() !== '') return v.trim();\n  }\n  return '';\n};\n\nconst extractFromRawText = (raw, key) => {\n  if (typeof raw !== 'string' || !raw) return '';\n  const re = new RegExp('\\\"' + key + '\\\"\\s*:\\s*\\\"([\\s\\S]*?)\\\"', 'i');\n  const m = raw.match(re);\n  if (!m || !m[1]) return '';\n  return m[1].trim();\n};\n\nreturn items.map((item) => {\n  const current = item.json || {};\n  const source = pickSource(current, item);\n  const ai = toAiOutput(current);\n  const raw = (typeof current.text === 'string' && current.text)\n    || (typeof current.output === 'string' && current.output)\n    || (ai && typeof ai.raw_text === 'string' ? ai.raw_text : '');\n\n  return {\n    json: {\n      ...source,\n      ...current,\n      output: ai,\n      pipeline_item_id: current.pipeline_item_id || source.pipeline_item_id || '',\n      ad_id: current.ad_id || source.ad_id || '',\n      hook_type: pickText(ai.hook_type, extractFromRawText(raw, 'hook_type'), current.hook_type, source.hook_type),\n      why_it_works: pickText(ai.why_it_works, extractFromRawText(raw, 'why_it_works'), current.why_it_works, source.why_it_works),\n      takeaway_1: pickText(ai.takeaway_1, extractFromRawText(raw, 'takeaway_1'), current.takeaway_1, source.takeaway_1),\n      takeaway_2: pickText(ai.takeaway_2, extractFromRawText(raw, 'takeaway_2'), current.takeaway_2, source.takeaway_2),\n      takeaway_3: pickText(ai.takeaway_3, extractFromRawText(raw, 'takeaway_3'), current.takeaway_3, source.takeaway_3),\n      hook_de_sortie: pickText(ai.hook_de_sortie, extractFromRawText(raw, 'hook_de_sortie'), current.hook_de_sortie, source.hook_de_sortie),\n      tunnel_friction_reasons: pickText(ai.tunnel_friction_reasons, extractFromRawText(raw, 'tunnel_friction_reasons'), current.tunnel_friction_reasons, source.tunnel_friction_reasons),\n      tunnel_recommendations: pickText(ai.tunnel_recommendations, extractFromRawText(raw, 'tunnel_recommendations'), current.tunnel_recommendations, source.tunnel_recommendations)\n    }\n  };\n});"
       },
       "id": "a4673f24-0da8-46c6-9b4c-574fabd7c4ef",
       "name": "Merge Exec Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1056,
-        -352
+        3460,
+        -320
       ]
     },
     {
@@ -496,8 +496,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -400,
-        -464
+        1460,
+        -420
       ]
     },
     {
@@ -509,8 +509,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -352,
-        -464
+        1660,
+        -420
       ]
     },
     {
@@ -572,8 +572,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [
-        2480,
-        -112
+        5060,
+        -320
       ]
     },
     {
@@ -841,8 +841,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2672,
-        -224
+        5260,
+        -420
       ]
     },
     {
@@ -877,8 +877,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        2880,
-        -224
+        5660,
+        -420
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -1152,8 +1152,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2672,
-        -16
+        5260,
+        -220
       ]
     },
     {
@@ -1188,8 +1188,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        2880,
-        -16
+        5660,
+        -220
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -1207,8 +1207,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2512,
-        336
+        5460,
+        -220
       ]
     },
     {
@@ -1220,8 +1220,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2448,
-        -416
+        5460,
+        -420
       ]
     },
     {
@@ -1233,8 +1233,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        520,
-        -220
+        1260,
+        -420
       ]
     },
     {
@@ -1246,8 +1246,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        900,
-        -220
+        2260,
+        -320
       ]
     },
     {
@@ -1259,8 +1259,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        1360,
-        -220
+        3060,
+        -320
       ]
     },
     {
@@ -1272,8 +1272,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2280,
-        -208
+        4860,
+        -320
       ]
     }
   ],
