@@ -66,7 +66,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const now = new Date();\nconst out = [];\n\nconst isPlaceholder = (str) => typeof str === 'string' && str.includes('{{') && str.includes('}}');\nconst cleanText = (v) => (typeof v === 'string' ? v.trim() : '');\nconst normalizeForMatch = (v) => cleanText(v).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nconst normalizeUrl = (u) => {\n  if (typeof u !== 'string') return '';\n  const v = u.trim();\n  if (!v) return '';\n  if (!/^https?:\\/\\//i.test(v)) return '';\n  return v;\n};\nconst pushUnique = (arr, value) => {\n  if (value && !arr.includes(value)) arr.push(value);\n};\n\nconst allItems = $input.all();\nfor (let itemIndex = 0; itemIndex < allItems.length; itemIndex++) {\n  const item = allItems[itemIndex];\n  const data = item.json || {};\n  const snap = data.snapshot || {};\n  const cards = Array.isArray(snap.cards) ? snap.cards : [];\n\n  const cardVariants = cards.map((card, idx) => {\n    const image = normalizeUrl(card.originalImageUrl)\n      || normalizeUrl(card.original_image_url)\n      || normalizeUrl(card.resizedImageUrl)\n      || normalizeUrl(card.resized_image_url)\n      || normalizeUrl(card.videoPreviewImageUrl)\n      || normalizeUrl(card.video_preview_image_url)\n      || '';\n    const video = normalizeUrl(card.videoHdUrl)\n      || normalizeUrl(card.video_hd_url)\n      || normalizeUrl(card.videoSdUrl)\n      || normalizeUrl(card.video_sd_url)\n      || '';\n\n    return {\n      index: idx + 1,\n      title: card.title || '',\n      body: card.body || '',\n      link_description: card.linkDescription || card.link_description || '',\n      image_url: image,\n      video_url: video,\n      cta_type: card.ctaType || card.cta_type || ''\n    };\n  });\n\n  var headline = snap.title || snap.ad_title || data.title || 'Pas de titre';\n  var body_text = (snap.body && snap.body.text) || snap.ad_body || data.body || 'Pas de texte';\n  var link_description = snap.linkDescription || snap.link_description || data.link_description || '';\n\n  const is_dco_ad = isPlaceholder(headline) || isPlaceholder(body_text) || isPlaceholder(link_description);\n  let is_data_from_cards = false;\n\n  if (is_dco_ad && cardVariants.length > 0) {\n    const first = cardVariants[0];\n    headline = first.title || first.body || headline;\n    body_text = first.body || body_text;\n    link_description = first.link_description || link_description;\n    is_data_from_cards = true;\n  }\n\n  const visualUrls = [];\n\n  if (Array.isArray(snap.images)) {\n    for (const img of snap.images) {\n      const fromImage = normalizeUrl(img && img.originalImageUrl)\n        || normalizeUrl(img && img.original_image_url)\n        || normalizeUrl(img && img.resizedImageUrl)\n        || normalizeUrl(img && img.resized_image_url)\n        || normalizeUrl((img && img.imageCrops && img.imageCrops[0]) ? img.imageCrops[0].originalImageUrl : '')\n        || normalizeUrl((img && img.image_crops && img.image_crops[0]) ? img.image_crops[0].original_image_url : '');\n      pushUnique(visualUrls, fromImage);\n    }\n  }\n\n  for (const v of cardVariants) pushUnique(visualUrls, v.image_url);\n\n  if (visualUrls.length === 0) {\n    const fallbackUrl = normalizeUrl(data.imageUrl)\n      || normalizeUrl(data.image_url)\n      || normalizeUrl((snap.cards && snap.cards[0]) ? (snap.cards[0].originalImageUrl || snap.cards[0].original_image_url) : '');\n    pushUnique(visualUrls, fallbackUrl);\n  }\n\n  const has_variants = visualUrls.length > 1 || cardVariants.length > 1 || !!data.adHasMultipleVersions || !!snap.adHasMultipleVersions;\n  const version_count = Math.max(visualUrls.length, cardVariants.length, data.versionCount || 0, snap.versionCount || 0, has_variants ? 2 : 1);\n\n  let dominant_age_range = 'Unknown';\n  let dominant_gender = 'All';\n  let age_gender_breakdown = '';\n  let eu_total_reach = 0;\n  let target_locations = 'Inconnu';\n\n  const aaa_info = (data.ad_details && data.ad_details.aaa_info) || (snap.age_country_gender_reach_breakdown ? { age_country_gender_reach_breakdown: snap.age_country_gender_reach_breakdown } : null);\n\n  if (data.ad_details && data.ad_details.aaa_info && data.ad_details.aaa_info.location_audience) {\n    target_locations = data.ad_details.aaa_info.location_audience.map(function(l) { return l.name; }).join(', ');\n  }\n\n  if (aaa_info && aaa_info.age_country_gender_reach_breakdown && aaa_info.age_country_gender_reach_breakdown.length) {\n    eu_total_reach = aaa_info.eu_total_reach || 0;\n    let countryData = aaa_info.age_country_gender_reach_breakdown.find(function(c) { return c.country === 'FR'; }) || aaa_info.age_country_gender_reach_breakdown[0];\n    if (countryData && countryData.age_gender_breakdowns && countryData.age_gender_breakdowns.length) {\n      let maxReach = 0;\n      let maxGender = 'All';\n      for (const b of countryData.age_gender_breakdowns) {\n        const total = (b.male || 0) + (b.female || 0) + (b.unknown || 0);\n        if (total > maxReach) {\n          maxReach = total;\n          dominant_age_range = b.age_range;\n          const f = b.female || 0;\n          const m = b.male || 0;\n          maxGender = f > m ? 'female' : (m > f ? 'male' : 'All');\n        }\n      }\n      dominant_gender = maxGender;\n      age_gender_breakdown = countryData.age_gender_breakdowns.map(function(b) { return b.age_range + ': M=' + (b.male || 0) + ' F=' + (b.female || 0); }).join(' | ');\n    }\n  }\n\n  const videoCandidates = [];\n  pushUnique(videoCandidates, normalizeUrl(data.videoUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_url));\n  pushUnique(videoCandidates, normalizeUrl(data.videoHdUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_hd_url));\n  pushUnique(videoCandidates, normalizeUrl(data.videoSdUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_sd_url));\n\n  if (typeof data.video_urls === 'string') {\n    for (const part of data.video_urls.split(/[|,]/)) pushUnique(videoCandidates, normalizeUrl(part));\n  }\n\n  if (Array.isArray(snap.videos)) {\n    for (const vid of snap.videos) {\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.videoHdUrl));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.video_hd_url));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.videoSdUrl));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.video_sd_url));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.url));\n    }\n  }\n\n  for (const v of cardVariants) pushUnique(videoCandidates, normalizeUrl(v.video_url));\n\n  const videoUrl = videoCandidates.find(Boolean) || '';\n  const hasVideo = Boolean(videoUrl);\n\n  const startDate = new Date(data.adRunStartDate || data.startDateFormatted || snap.creation_time || now);\n  const daysActive = Math.ceil(Math.abs(now - startDate) / (1000 * 60 * 60 * 24)) || 1;\n\n  let score = 0;\n  score += Math.min(daysActive * 1.5, 30);\n  score += hasVideo ? 15 : 0;\n  score += (version_count || 0) * 10;\n  score += Math.min((eu_total_reach || 0) / 50000, 20);\n\n  const virality_score = Math.min(Math.round(((eu_total_reach || 0) / 100000) * 10 + (version_count * 5) + (hasVideo ? 10 : 0) + (daysActive > 30 ? 10 : 0)), 100);\n\n  const extraTexts = (Array.isArray(snap.extraTexts) ? snap.extraTexts : [])\n    .map(function(x) { return cleanText(x && x.text); })\n    .filter(Boolean);\n\n  let form_type = 'external_landing_page';\n  let native_questions_array = [];\n  let landing_page_intro_text = '';\n  let native_landing_page_promise = '';\n\n  if (extraTexts.length > 0) {\n    const isQuestion = function(t) { return cleanText(t).endsWith('?'); };\n    const isLegalText = function(t) {\n      const n = normalizeForMatch(t);\n      return n.includes('condition generale')\n        || n.includes('conditions generales')\n        || n.includes('politique de confidentialite')\n        || n.includes('confidentialite')\n        || n.includes('mentions legales')\n        || n.includes('protection des donnees')\n        || n.includes('j accepte')\n        || n.includes('consentement');\n    };\n    const isStandardFieldLabel = function(t) {\n      const n = normalizeForMatch(t);\n      return [\n        'full name', 'phone number', 'email', 'post code', 'postal code',\n        'nom complet', 'nom', 'prenom', 'telephone', 'numero de telephone',\n        'code postal', 'ville'\n      ].includes(n);\n    };\n\n    const cleanedExtraTexts = extraTexts.filter(function(t) {\n      return !isLegalText(t) && !isStandardFieldLabel(t);\n    });\n\n    const firstQuestionIndex = cleanedExtraTexts.findIndex(isQuestion);\n    if (firstQuestionIndex > 0) {\n      landing_page_intro_text = cleanedExtraTexts.slice(0, firstQuestionIndex).join(' ').trim();\n    } else if (firstQuestionIndex === -1 && cleanedExtraTexts.length > 0) {\n      landing_page_intro_text = cleanedExtraTexts[0];\n    }\n\n    const lastQuestionIndex = (function() {\n      for (let i = cleanedExtraTexts.length - 1; i >= 0; i--) {\n        if (isQuestion(cleanedExtraTexts[i])) return i;\n      }\n      return -1;\n    })();\n\n    const tailTexts = (lastQuestionIndex >= 0\n      ? cleanedExtraTexts.slice(lastQuestionIndex + 1)\n      : cleanedExtraTexts\n    ).filter(function(t) { return !isQuestion(t) && cleanText(t).length > 0; });\n\n    if (tailTexts.length > 0) {\n      const longTail = tailTexts.filter(function(t) { return cleanText(t).length >= 20; });\n      native_landing_page_promise = (longTail.length > 0 ? longTail[longTail.length - 1] : tailTexts[tailTexts.length - 1]).trim();\n    }\n\n    let currentQuestion = null;\n    let currentChoices = [];\n\n    for (const txt of extraTexts) {\n      const lower = normalizeForMatch(txt);\n\n      if (isLegalText(txt)) continue;\n\n      if (txt.endsWith('?')) {\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n        }\n        currentQuestion = txt;\n        currentChoices = [];\n        continue;\n      }\n\n      if (currentQuestion && (['OUI', 'NON'].includes(txt.toUpperCase()) || txt.includes('?') || lower.includes('je ne sais pas') || /^[0-9]+.*[0-9]+$/.test(txt))) {\n        currentChoices.push(txt);\n        continue;\n      }\n\n      if (isStandardFieldLabel(txt)) {\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n          currentQuestion = null;\n          currentChoices = [];\n        }\n        native_questions_array.push({ question: txt, type: 'standard_field', choices: null });\n      }\n    }\n\n    if (currentQuestion) {\n      native_questions_array.push({\n        question: currentQuestion,\n        type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n        choices: currentChoices.length > 0 ? currentChoices : null\n      });\n    }\n\n    if (native_questions_array.length > 0) form_type = 'native_meta_form';\n  }\n\n  const parsed_form_text = native_questions_array.map(function(q) {\n    if (q.type === 'multiple_choice') return '[Choix Multiple] ' + q.question + ' -> Choix: ' + ((q.choices || []).join(', '));\n    if (q.type === 'standard_field') return '[Donnee Demandee] ' + q.question;\n    return '[Question Ouverte] ' + q.question;\n  }).join('\\n');\n\n  const questionsObject = {};\n  for (let i = 0; i < 15; i++) {\n    const q = native_questions_array[i];\n    const k = 'question_' + (i + 1);\n    if (!q) { questionsObject[k] = ''; continue; }\n    if (q.type === 'multiple_choice') questionsObject[k] = '[Choix Multiple] ' + q.question + ' -> Choix: ' + ((q.choices || []).join(', '));\n    else if (q.type === 'standard_field') questionsObject[k] = '[Donnee Demandee] ' + q.question;\n    else questionsObject[k] = '[Question Ouverte] ' + q.question;\n  }\n\n  const variantFlat = {};\n  for (let i = 0; i < 5; i++) {\n    const v = cardVariants[i] || {};\n    const idx = i + 1;\n    variantFlat['variant_url_' + idx] = v.image_url || '';\n    variantFlat['variant_title_' + idx] = v.title || '';\n    variantFlat['variant_copy_' + idx] = v.body || '';\n  }\n\n  const rawAdId = data.adArchiveID || data.ad_archive_id || data.id || '';\n  const pipeline_item_id = (rawAdId ? String(rawAdId) : 'noad') + '::' + String(itemIndex);\n\n  out.push({\n    json: {\n      pipeline_item_id,\n      ad_id: rawAdId,\n      brand: data.pageName || snap.page_name || 'Inconnu',\n      days_active: daysActive,\n      performance_score: Math.round(score),\n      headline: headline,\n      body_text: body_text,\n      link_description: link_description,\n      ad_copy: body_text,\n      visual_url: visualUrls[0] || '',\n      visual_urls: visualUrls.join(' | '),\n      visual_urls_json: JSON.stringify(visualUrls),\n      image_count: visualUrls.length,\n      has_image: visualUrls.length > 0,\n      has_variants: has_variants,\n      version_count: version_count,\n      variant_count_from_cards: cardVariants.length,\n      variant_details_json: JSON.stringify(cardVariants),\n      dominant_age_range: dominant_age_range,\n      dominant_gender: dominant_gender,\n      age_gender_breakdown: age_gender_breakdown,\n      eu_total_reach: eu_total_reach,\n      target_locations: target_locations,\n      is_dco_ad: is_dco_ad,\n      is_data_from_cards: is_data_from_cards,\n      form_type: form_type,\n      form_fields_json: form_type === 'native_meta_form' ? JSON.stringify(native_questions_array) : '',\n      form_total_fields: native_questions_array.length,\n      native_form_questions_plain: parsed_form_text,\n      landing_page_intro_text: landing_page_intro_text,\n      landing_page_promise: form_type === 'native_meta_form' ? native_landing_page_promise : '',\n      cta_type: data.ctaType || snap.cta_type || snap.cta_text || 'LEARN_MORE',\n      video_url: videoUrl,\n      has_video: hasVideo,\n      website_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || '',\n      landing_page_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || '',\n      virality_score: virality_score,\n      hook_type: '',\n      why_it_works: '',\n      takeaway_1: '',\n      takeaway_2: '',\n      takeaway_3: '',\n      exit_hook: '',\n      tunnel_friction_reasons_detailed: '',\n      ...variantFlat,\n      ...questionsObject\n    }\n  });\n}\n\nreturn out.sort(function(a, b) {\n  return (b.json.performance_score || 0) - (a.json.performance_score || 0);\n});"
+        "jsCode": "const now = new Date();\nconst out = [];\n\nconst isPlaceholder = (str) => typeof str === 'string' && str.includes('{{') && str.includes('}}');\nconst cleanText = (v) => (typeof v === 'string' ? v.trim() : '');\nconst normalizeForMatch = (v) => cleanText(v).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nconst normalizeUrl = (u) => {\n  if (typeof u !== 'string') return '';\n  const v = u.trim();\n  if (!v) return '';\n  if (!/^https?:\\/\\//i.test(v)) return '';\n  return v;\n};\nconst pushUnique = (arr, value) => {\n  if (value && !arr.includes(value)) arr.push(value);\n};\n\nconst allItems = $input.all();\nfor (let itemIndex = 0; itemIndex < allItems.length; itemIndex++) {\n  const item = allItems[itemIndex];\n  const data = item.json || {};\n  const snap = data.snapshot || {};\n  const cards = Array.isArray(snap.cards) ? snap.cards : [];\n\n  const cardVariants = cards.map((card, idx) => {\n    const image = normalizeUrl(card.originalImageUrl)\n      || normalizeUrl(card.original_image_url)\n      || normalizeUrl(card.resizedImageUrl)\n      || normalizeUrl(card.resized_image_url)\n      || normalizeUrl(card.videoPreviewImageUrl)\n      || normalizeUrl(card.video_preview_image_url)\n      || '';\n    const video = normalizeUrl(card.videoHdUrl)\n      || normalizeUrl(card.video_hd_url)\n      || normalizeUrl(card.videoSdUrl)\n      || normalizeUrl(card.video_sd_url)\n      || '';\n\n    return {\n      index: idx + 1,\n      title: card.title || '',\n      variant_headline: card.title || '',\n      body: card.body || '',\n      caption: card.caption || '',\n      link_description: card.linkDescription || card.link_description || '',\n      link_url: card.linkUrl || card.link_url || '',\n      cta_type: card.ctaType || card.cta_type || '',\n      cta_text: card.ctaText || card.cta_text || '',\n      original_image_url: card.originalImageUrl || card.original_image_url || '',\n      resized_image_url: card.resizedImageUrl || card.resized_image_url || '',\n      video_preview_image_url: card.videoPreviewImageUrl || card.video_preview_image_url || '',\n      video_hd_url: card.videoHdUrl || card.video_hd_url || '',\n      video_sd_url: card.videoSdUrl || card.video_sd_url || '',\n      image_url: image,\n      video_url: video\n    };\n  });\n\n  var headline = snap.title || snap.ad_title || data.title || 'Pas de titre';\n  var body_text = (snap.body && snap.body.text) || snap.ad_body || data.body || 'Pas de texte';\n  var link_description = snap.linkDescription || snap.link_description || data.link_description || '';\n\n  const is_dco_ad = isPlaceholder(headline) || isPlaceholder(body_text) || isPlaceholder(link_description);\n  let is_data_from_cards = false;\n\n  if (is_dco_ad && cardVariants.length > 0) {\n    const first = cardVariants[0];\n    headline = first.title || first.body || headline;\n    body_text = first.body || body_text;\n    link_description = first.link_description || link_description;\n    is_data_from_cards = true;\n  }\n\n  const visualUrls = [];\n\n  if (Array.isArray(snap.images)) {\n    for (const img of snap.images) {\n      const fromImage = normalizeUrl(img && img.originalImageUrl)\n        || normalizeUrl(img && img.original_image_url)\n        || normalizeUrl(img && img.resizedImageUrl)\n        || normalizeUrl(img && img.resized_image_url)\n        || normalizeUrl((img && img.imageCrops && img.imageCrops[0]) ? img.imageCrops[0].originalImageUrl : '')\n        || normalizeUrl((img && img.image_crops && img.image_crops[0]) ? img.image_crops[0].original_image_url : '');\n      pushUnique(visualUrls, fromImage);\n    }\n  }\n\n  for (const v of cardVariants) pushUnique(visualUrls, v.image_url);\n\n  if (visualUrls.length === 0) {\n    const fallbackUrl = normalizeUrl(data.imageUrl)\n      || normalizeUrl(data.image_url)\n      || normalizeUrl((snap.cards && snap.cards[0]) ? (snap.cards[0].originalImageUrl || snap.cards[0].original_image_url) : '');\n    pushUnique(visualUrls, fallbackUrl);\n  }\n\n  const has_variants = visualUrls.length > 1 || cardVariants.length > 1 || !!data.adHasMultipleVersions || !!snap.adHasMultipleVersions;\n  const version_count = Math.max(visualUrls.length, cardVariants.length, data.versionCount || 0, snap.versionCount || 0, has_variants ? 2 : 1);\n\n  let dominant_age_range = 'Unknown';\n  let dominant_gender = 'All';\n  let age_gender_breakdown = '';\n  let eu_total_reach = 0;\n  let target_locations = 'Inconnu';\n\n  const aaa_info = (data.ad_details && data.ad_details.aaa_info) || (snap.age_country_gender_reach_breakdown ? { age_country_gender_reach_breakdown: snap.age_country_gender_reach_breakdown } : null);\n\n  if (data.ad_details && data.ad_details.aaa_info && data.ad_details.aaa_info.location_audience) {\n    target_locations = data.ad_details.aaa_info.location_audience.map(function(l) { return l.name; }).join(', ');\n  }\n\n  if (aaa_info && aaa_info.age_country_gender_reach_breakdown && aaa_info.age_country_gender_reach_breakdown.length) {\n    eu_total_reach = aaa_info.eu_total_reach || 0;\n    let countryData = aaa_info.age_country_gender_reach_breakdown.find(function(c) { return c.country === 'FR'; }) || aaa_info.age_country_gender_reach_breakdown[0];\n    if (countryData && countryData.age_gender_breakdowns && countryData.age_gender_breakdowns.length) {\n      let maxReach = 0;\n      let maxGender = 'All';\n      for (const b of countryData.age_gender_breakdowns) {\n        const total = (b.male || 0) + (b.female || 0) + (b.unknown || 0);\n        if (total > maxReach) {\n          maxReach = total;\n          dominant_age_range = b.age_range;\n          const f = b.female || 0;\n          const m = b.male || 0;\n          maxGender = f > m ? 'female' : (m > f ? 'male' : 'All');\n        }\n      }\n      dominant_gender = maxGender;\n      age_gender_breakdown = countryData.age_gender_breakdowns.map(function(b) { return b.age_range + ': M=' + (b.male || 0) + ' F=' + (b.female || 0); }).join(' | ');\n    }\n  }\n\n  const videoCandidates = [];\n  pushUnique(videoCandidates, normalizeUrl(data.videoUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_url));\n  pushUnique(videoCandidates, normalizeUrl(data.videoHdUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_hd_url));\n  pushUnique(videoCandidates, normalizeUrl(data.videoSdUrl));\n  pushUnique(videoCandidates, normalizeUrl(data.video_sd_url));\n\n  if (typeof data.video_urls === 'string') {\n    for (const part of data.video_urls.split(/[|,]/)) pushUnique(videoCandidates, normalizeUrl(part));\n  }\n\n  if (Array.isArray(snap.videos)) {\n    for (const vid of snap.videos) {\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.videoHdUrl));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.video_hd_url));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.videoSdUrl));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.video_sd_url));\n      pushUnique(videoCandidates, normalizeUrl(vid && vid.url));\n    }\n  }\n\n  for (const v of cardVariants) pushUnique(videoCandidates, normalizeUrl(v.video_url));\n\n  const videoUrl = videoCandidates.find(Boolean) || '';\n  const hasVideo = Boolean(videoUrl);\n\n  const startDate = new Date(data.adRunStartDate || data.startDateFormatted || snap.creation_time || now);\n  const daysActive = Math.ceil(Math.abs(now - startDate) / (1000 * 60 * 60 * 24)) || 1;\n\n  let score = 0;\n  score += Math.min(daysActive * 1.5, 30);\n  score += hasVideo ? 15 : 0;\n  score += (version_count || 0) * 10;\n  score += Math.min((eu_total_reach || 0) / 50000, 20);\n\n  const virality_score = Math.min(Math.round(((eu_total_reach || 0) / 100000) * 10 + (version_count * 5) + (hasVideo ? 10 : 0) + (daysActive > 30 ? 10 : 0)), 100);\n\n  const extraTexts = (Array.isArray(snap.extraTexts) ? snap.extraTexts : [])\n    .map(function(x) { return cleanText(x && x.text); })\n    .filter(Boolean);\n\n  let form_type = 'external_landing_page';\n  let native_questions_array = [];\n  let landing_page_intro_text = '';\n  let native_landing_page_promise = '';\n\n  if (extraTexts.length > 0) {\n    const isQuestion = function(t) { return cleanText(t).endsWith('?'); };\n    const isLegalText = function(t) {\n      const n = normalizeForMatch(t);\n      return n.includes('condition generale')\n        || n.includes('conditions generales')\n        || n.includes('politique de confidentialite')\n        || n.includes('confidentialite')\n        || n.includes('mentions legales')\n        || n.includes('protection des donnees')\n        || n.includes('j accepte')\n        || n.includes('consentement');\n    };\n    const isStandardFieldLabel = function(t) {\n      const n = normalizeForMatch(t);\n      return [\n        'full name', 'phone number', 'email', 'post code', 'postal code',\n        'nom complet', 'nom', 'prenom', 'telephone', 'numero de telephone',\n        'code postal', 'ville'\n      ].includes(n);\n    };\n\n    const cleanedExtraTexts = extraTexts.filter(function(t) {\n      return !isLegalText(t) && !isStandardFieldLabel(t);\n    });\n\n    const firstQuestionIndex = cleanedExtraTexts.findIndex(isQuestion);\n    if (firstQuestionIndex > 0) {\n      landing_page_intro_text = cleanedExtraTexts.slice(0, firstQuestionIndex).join(' ').trim();\n    } else if (firstQuestionIndex === -1 && cleanedExtraTexts.length > 0) {\n      landing_page_intro_text = cleanedExtraTexts[0];\n    }\n\n    const lastQuestionIndex = (function() {\n      for (let i = cleanedExtraTexts.length - 1; i >= 0; i--) {\n        if (isQuestion(cleanedExtraTexts[i])) return i;\n      }\n      return -1;\n    })();\n\n    const tailTexts = (lastQuestionIndex >= 0\n      ? cleanedExtraTexts.slice(lastQuestionIndex + 1)\n      : cleanedExtraTexts\n    ).filter(function(t) { return !isQuestion(t) && cleanText(t).length > 0; });\n\n    if (tailTexts.length > 0) {\n      const longTail = tailTexts.filter(function(t) { return cleanText(t).length >= 20; });\n      native_landing_page_promise = (longTail.length > 0 ? longTail[longTail.length - 1] : tailTexts[tailTexts.length - 1]).trim();\n    }\n\n    let currentQuestion = null;\n    let currentChoices = [];\n\n    for (const txt of extraTexts) {\n      const lower = normalizeForMatch(txt);\n\n      if (isLegalText(txt)) continue;\n\n      if (txt.endsWith('?')) {\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n        }\n        currentQuestion = txt;\n        currentChoices = [];\n        continue;\n      }\n\n      if (currentQuestion && (['OUI', 'NON'].includes(txt.toUpperCase()) || txt.includes('?') || lower.includes('je ne sais pas') || /^[0-9]+.*[0-9]+$/.test(txt))) {\n        currentChoices.push(txt);\n        continue;\n      }\n\n      if (isStandardFieldLabel(txt)) {\n        if (currentQuestion) {\n          native_questions_array.push({\n            question: currentQuestion,\n            type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n            choices: currentChoices.length > 0 ? currentChoices : null\n          });\n          currentQuestion = null;\n          currentChoices = [];\n        }\n        native_questions_array.push({ question: txt, type: 'standard_field', choices: null });\n      }\n    }\n\n    if (currentQuestion) {\n      native_questions_array.push({\n        question: currentQuestion,\n        type: currentChoices.length > 0 ? 'multiple_choice' : 'text',\n        choices: currentChoices.length > 0 ? currentChoices : null\n      });\n    }\n\n    if (native_questions_array.length > 0) form_type = 'native_meta_form';\n  }\n\n  const parsed_form_text = native_questions_array.map(function(q) {\n    if (q.type === 'multiple_choice') return '[Choix Multiple] ' + q.question + ' -> Choix: ' + ((q.choices || []).join(', '));\n    if (q.type === 'standard_field') return '[Donnee Demandee] ' + q.question;\n    return '[Question Ouverte] ' + q.question;\n  }).join('\\n');\n\n  const questionsObject = {};\n  for (let i = 0; i < 15; i++) {\n    const q = native_questions_array[i];\n    const k = 'question_' + (i + 1);\n    if (!q) { questionsObject[k] = ''; continue; }\n    if (q.type === 'multiple_choice') questionsObject[k] = '[Choix Multiple] ' + q.question + ' -> Choix: ' + ((q.choices || []).join(', '));\n    else if (q.type === 'standard_field') questionsObject[k] = '[Donnee Demandee] ' + q.question;\n    else questionsObject[k] = '[Question Ouverte] ' + q.question;\n  }\n\n  const variantFlat = {};\n  for (let i = 0; i < 5; i++) {\n    const v = cardVariants[i] || {};\n    const idx = i + 1;\n    variantFlat['variant_url_' + idx] = v.image_url || '';\n    variantFlat['variant_title_' + idx] = v.title || '';\n    variantFlat['variant_copy_' + idx] = v.body || '';\n  }\n\n  const rawAdId = data.adArchiveID || data.ad_archive_id || data.id || '';\n  const pipeline_item_id = (rawAdId ? String(rawAdId) : 'noad') + '::' + String(itemIndex);\n\n  out.push({\n    json: {\n      pipeline_item_id,\n      ad_id: rawAdId,\n      brand: data.pageName || snap.page_name || 'Inconnu',\n      days_active: daysActive,\n      performance_score: Math.round(score),\n      headline: headline,\n      body_text: body_text,\n      link_description: link_description,\n      ad_copy: body_text,\n      visual_url: visualUrls[0] || '',\n      visual_urls: visualUrls.join(' | '),\n      visual_urls_json: JSON.stringify(visualUrls),\n      image_count: visualUrls.length,\n      has_image: visualUrls.length > 0,\n      has_variants: has_variants,\n      version_count: version_count,\n      variant_count_from_cards: cardVariants.length,\n      variant_details_json: JSON.stringify(cardVariants),\n      dominant_age_range: dominant_age_range,\n      dominant_gender: dominant_gender,\n      age_gender_breakdown: age_gender_breakdown,\n      eu_total_reach: eu_total_reach,\n      target_locations: target_locations,\n      is_dco_ad: is_dco_ad,\n      is_data_from_cards: is_data_from_cards,\n      form_type: form_type,\n      form_fields_json: form_type === 'native_meta_form' ? JSON.stringify(native_questions_array) : '',\n      form_total_fields: native_questions_array.length,\n      native_form_questions_plain: parsed_form_text,\n      landing_page_intro_text: landing_page_intro_text,\n      landing_page_promise: form_type === 'native_meta_form' ? native_landing_page_promise : '',\n      cta_type: data.ctaType || snap.cta_type || snap.cta_text || 'LEARN_MORE',\n      video_url: videoUrl,\n      has_video: hasVideo,\n      website_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || '',\n      landing_page_url: snap.linkUrl || data.adSnapshotUrl || snap.link_url || data.link || snap.website_url || '',\n      virality_score: virality_score,\n      hook_type: '',\n      why_it_works: '',\n      takeaway_1: '',\n      takeaway_2: '',\n      takeaway_3: '',\n      exit_hook: '',\n      tunnel_friction_reasons_detailed: '',\n      ...variantFlat,\n      ...questionsObject\n    }\n  });\n}\n\nreturn out.sort(function(a, b) {\n  return (b.json.performance_score || 0) - (a.json.performance_score || 0);\n});"
       },
       "id": "898223e2-0284-4118-9c1f-793d8962f0ff",
       "name": "Process & Score (Etape 1 Complete)",
@@ -269,7 +269,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const current = item.json || {};\n  const formType = current.form_type || 'external_landing_page';\n  const landingPageUrl = current.landing_page_url || current.website_url || current.linkUrl || '';\n  const isNative = formType === 'native_meta_form' || landingPageUrl.includes('fb.me') || landingPageUrl.includes('facebook.com/lead');\n\n  if (isNative) {\n    const nativeQuestions = (current.native_form_questions_plain || '').toLowerCase();\n    return {\n      json: {\n        ...current,\n        form_type: 'native_meta_form',\n        landing_page_title: current.landing_page_title || 'Formulaire natif Meta',\n        landing_page_subtitle: current.landing_page_subtitle || '',\n        landing_page_promise: current.landing_page_promise || current.hook_de_sortie || '',\n        form_required_fields: current.form_required_fields ?? current.form_total_fields ?? 0,\n        form_optional_fields: current.form_optional_fields ?? 0,\n        form_has_email: current.form_has_email ?? nativeQuestions.includes('email'),\n        email_field_name: current.email_field_name || 'email',\n        form_has_phone: current.form_has_phone ?? (nativeQuestions.includes('phone') || nativeQuestions.includes('telephone')),\n        phone_field_name: current.phone_field_name || 'phone',\n        form_has_birth_date: current.form_has_birth_date ?? false,\n        birth_date_field_name: current.birth_date_field_name || '',\n        form_has_postal_code: current.form_has_postal_code ?? nativeQuestions.includes('post code'),\n        postal_code_field_name: current.postal_code_field_name || 'postal_code',\n        form_has_social_status: current.form_has_social_status ?? false,\n        social_status_field_name: current.social_status_field_name || '',\n        cta_text: current.cta_text || 'Envoyer',\n        estimated_completion_time: current.estimated_completion_time || '1 min',\n        skip_html_fetch: true,\n        tunnel_quality_score: current.tunnel_quality_score ?? 0,\n        tunnel_friction_level: current.tunnel_friction_level || '',\n        tunnel_friction_reasons: current.tunnel_friction_reasons || '',\n        tunnel_recommendations: current.tunnel_recommendations || '',\n        tunnel_estimated_conversion_rate: current.tunnel_estimated_conversion_rate ?? 0\n      }\n    };\n  }\n\n  return {\n    json: {\n      ...current,\n      form_type: 'external_landing_page',\n      landing_page_url: landingPageUrl,\n      skip_html_fetch: !landingPageUrl\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nconst cleanText = (v) => (typeof v === 'string' ? v.trim() : '');\n\nconst inferLevel = (ctx) => {\n  const levelInput = String(ctx.tunnel_friction_level || '').toLowerCase();\n  if (['low', 'medium', 'high'].includes(levelInput)) return levelInput;\n\n  const total = Number(ctx.form_total_fields ?? 0);\n  const required = Number(ctx.form_required_fields ?? 0);\n  const hasPhone = ctx.form_has_phone === true;\n\n  if (total <= 4 && required <= 2 && !hasPhone) return 'low';\n  if (total >= 8 || required >= 6 || (hasPhone && total >= 5)) return 'high';\n  return 'medium';\n};\n\nconst inferReasons = (ctx, level) => {\n  const reasons = [];\n  const total = Number(ctx.form_total_fields ?? 0);\n  const required = Number(ctx.form_required_fields ?? 0);\n  const hasPhone = ctx.form_has_phone === true;\n  const hasIntro = cleanText(ctx.landing_page_intro_text).length > 0;\n  const hasPromise = cleanText(ctx.landing_page_promise).length > 0;\n\n  if (total >= 7) reasons.push('Formulaire natif trop long pour un premier contact');\n  if (required >= 5) reasons.push('Trop de champs obligatoires avant la valeur percue');\n  if (hasPhone) reasons.push('Demande de telephone immediate pouvant freiner les leads froids');\n  if (!hasIntro) reasons.push('Absence de texte d introduction clair sur la raison du formulaire');\n  if (!hasPromise) reasons.push('Promesse finale peu explicite sur le benefice du devis');\n\n  if (reasons.length === 0 && level === 'low') {\n    reasons.push('Parcours court et lisible avec effort de completion limite');\n    reasons.push('Bon alignement entre promesse et soumission de formulaire');\n  } else if (reasons.length === 0 && level === 'medium') {\n    reasons.push('Friction moderee: structure correcte mais clarte et reassurance perfectibles');\n  } else if (reasons.length === 0) {\n    reasons.push('Friction elevee: effort percu important avant qualification commerciale');\n  }\n\n  return reasons.slice(0, 5).join('; ');\n};\n\nconst inferRecommendations = (ctx, level) => {\n  const recos = [];\n  const total = Number(ctx.form_total_fields ?? 0);\n  const required = Number(ctx.form_required_fields ?? 0);\n  const hasPhone = ctx.form_has_phone === true;\n\n  if (total > 5) recos.push('Reduire le formulaire a 3-5 champs pour augmenter la completion');\n  if (required > 4) recos.push('Passer certains champs en optionnel et qualifier apres soumission');\n  if (hasPhone) recos.push('Justifier la demande de telephone avec un benefice explicite de rappel');\n  recos.push('Renforcer la reassurance pres du CTA (confidentialite, accompagnement conseiller)');\n  recos.push('Rendre la promesse de sortie plus concrete: devis mutuelle rapide et personnalise');\n\n  if (level === 'low') recos.unshift('Conserver la simplicite actuelle et tester preuve sociale locale');\n  if (level === 'high') recos.unshift('Priorite haute: supprimer les champs non essentiels au premier ecran');\n\n  return recos.slice(0, 6).join('; ');\n};\n\nconst inferRate = (ctx, level) => {\n  const provided = Number(ctx.tunnel_estimated_conversion_rate);\n  if (Number.isFinite(provided) && provided > 0) return Math.max(0, Math.min(100, Math.round(provided)));\n\n  let base = level === 'low' ? 38 : (level === 'medium' ? 27 : 18);\n  const total = Number(ctx.form_total_fields ?? 0);\n  const required = Number(ctx.form_required_fields ?? 0);\n  if (total >= 8) base -= 3;\n  if (required >= 6) base -= 2;\n  if (!cleanText(ctx.cta_text)) base -= 2;\n  return Math.max(5, Math.min(65, Math.round(base)));\n};\n\nconst inferScore = (level) => {\n  if (level === 'low') return 8;\n  if (level === 'high') return 4;\n  return 6;\n};\n\nreturn items.map((item) => {\n  const current = item.json || {};\n  const formType = current.form_type || 'external_landing_page';\n  const landingPageUrl = current.landing_page_url || current.website_url || current.linkUrl || '';\n  const isNative = formType === 'native_meta_form' || landingPageUrl.includes('fb.me') || landingPageUrl.includes('facebook.com/lead');\n\n  if (isNative) {\n    const nativeQuestions = (current.native_form_questions_plain || '').toLowerCase();\n\n    const nativeCtx = {\n      ...current,\n      form_total_fields: current.form_total_fields ?? 0,\n      form_required_fields: current.form_required_fields ?? current.form_total_fields ?? 0,\n      form_has_phone: current.form_has_phone ?? (nativeQuestions.includes('phone') || nativeQuestions.includes('telephone')),\n      cta_text: current.cta_text || 'Envoyer'\n    };\n\n    const level = inferLevel(nativeCtx);\n    const reasons = cleanText(current.tunnel_friction_reasons) || inferReasons(nativeCtx, level);\n    const recommendations = cleanText(current.tunnel_recommendations) || inferRecommendations(nativeCtx, level);\n    const estimated = inferRate(nativeCtx, level);\n    const score = Number(current.tunnel_quality_score);\n\n    return {\n      json: {\n        ...current,\n        form_type: 'native_meta_form',\n        landing_page_title: current.landing_page_title || 'Formulaire natif Meta',\n        landing_page_subtitle: current.landing_page_subtitle || '',\n        landing_page_promise: current.landing_page_promise || current.hook_de_sortie || '',\n        form_required_fields: nativeCtx.form_required_fields,\n        form_optional_fields: current.form_optional_fields ?? 0,\n        form_has_email: current.form_has_email ?? nativeQuestions.includes('email'),\n        email_field_name: current.email_field_name || 'email',\n        form_has_phone: nativeCtx.form_has_phone,\n        phone_field_name: current.phone_field_name || 'phone',\n        form_has_birth_date: current.form_has_birth_date ?? false,\n        birth_date_field_name: current.birth_date_field_name || '',\n        form_has_postal_code: current.form_has_postal_code ?? nativeQuestions.includes('post code'),\n        postal_code_field_name: current.postal_code_field_name || 'postal_code',\n        form_has_social_status: current.form_has_social_status ?? false,\n        social_status_field_name: current.social_status_field_name || '',\n        cta_text: nativeCtx.cta_text,\n        estimated_completion_time: current.estimated_completion_time || '1 min',\n        skip_html_fetch: true,\n        tunnel_quality_score: Number.isFinite(score) && score > 0 ? score : inferScore(level),\n        tunnel_friction_level: current.tunnel_friction_level || level,\n        tunnel_friction_reasons: reasons,\n        tunnel_recommendations: recommendations,\n        tunnel_estimated_conversion_rate: estimated\n      }\n    };\n  }\n\n  return {\n    json: {\n      ...current,\n      form_type: 'external_landing_page',\n      landing_page_url: landingPageUrl,\n      skip_html_fetch: !landingPageUrl\n    }\n  };\n});"
       },
       "id": "a445c51c-11d5-49f4-b23e-8fa2487f8b0b",
       "name": "Prepare Landing Page Extraction",
@@ -789,13 +789,13 @@
             {
               "id": "5b3d9622-65c5-4926-b416-70860a974f4d",
               "name": "tunnel_quality_score",
-              "value": "={{ $json.tunnel_quality_score || '' }}",
+              "value": "={{ $json.tunnel_quality_score ?? $json.output?.tunnel_quality_score ?? '' }}",
               "type": "string"
             },
             {
               "id": "03b7b198-29f3-4d86-a183-c53ff2c0a5d6",
               "name": "tunnel_friction_level",
-              "value": "={{ $json.tunnel_friction_level || '' }}",
+              "value": "={{ $json.tunnel_friction_level ?? $json.output?.tunnel_friction_level ?? '' }}",
               "type": "string"
             },
             {
@@ -813,7 +813,7 @@
             {
               "id": "1754dda0-208f-40c2-b9c1-1cde7c10f041",
               "name": "tunnel_estimated_conversion_rate",
-              "value": "={{ $json.tunnel_estimated_conversion_rate || '' }}",
+              "value": "={{ $json.tunnel_estimated_conversion_rate ?? $json.output?.tunnel_estimated_conversion_rate ?? '' }}",
               "type": "string"
             },
             {
@@ -832,6 +832,36 @@
               "id": "landing_page_promise_id",
               "name": "landing_page_promise",
               "value": "={{ $json.landing_page_promise || $json.hook_de_sortie || $json.output.hook_de_sortie || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "99eb7a51-a088-4822-b2b3-ba6967e3cb63",
+              "name": "variant_count",
+              "value": "={{ $json.variant_count_from_cards ?? $json.version_count ?? 0 }}",
+              "type": "string"
+            },
+            {
+              "id": "5ad89ec0-29e7-4fe2-82d5-33254cbd9d2e",
+              "name": "variant_details_json",
+              "value": "={{ $json.variant_details_json || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "c9ce6958-3ec8-4080-8058-fad7a8561cb9",
+              "name": "variant_titles_preview",
+              "value": "={{ [$json.variant_title_1, $json.variant_title_2, $json.variant_title_3].filter(v => v && v.toString().trim() !== '').join(' | ') }}",
+              "type": "string"
+            },
+            {
+              "id": "718d4674-eb79-4cd5-950c-9c2da4264276",
+              "name": "variant_bodies_preview",
+              "value": "={{ [$json.variant_copy_1, $json.variant_copy_2, $json.variant_copy_3].filter(v => v && v.toString().trim() !== '').join(' | ') }}",
+              "type": "string"
+            },
+            {
+              "id": "151f1ffd-f574-44e5-8bb7-78f7e700b359",
+              "name": "variant_urls_preview",
+              "value": "={{ [$json.variant_url_1, $json.variant_url_2, $json.variant_url_3].filter(v => v && v.toString().trim() !== '').join(' | ') }}",
               "type": "string"
             }
           ]
@@ -1100,13 +1130,13 @@
             {
               "id": "5b3d9622-65c5-4926-b416-70860a974f4d",
               "name": "tunnel_quality_score",
-              "value": "={{ $json.tunnel_quality_score || '' }}",
+              "value": "={{ $json.tunnel_quality_score ?? $json.output?.tunnel_quality_score ?? '' }}",
               "type": "string"
             },
             {
               "id": "03b7b198-29f3-4d86-a183-c53ff2c0a5d6",
               "name": "tunnel_friction_level",
-              "value": "={{ $json.tunnel_friction_level || '' }}",
+              "value": "={{ $json.tunnel_friction_level ?? $json.output?.tunnel_friction_level ?? '' }}",
               "type": "string"
             },
             {
@@ -1124,7 +1154,7 @@
             {
               "id": "1754dda0-208f-40c2-b9c1-1cde7c10f041",
               "name": "tunnel_estimated_conversion_rate",
-              "value": "={{ $json.tunnel_estimated_conversion_rate || '' }}",
+              "value": "={{ $json.tunnel_estimated_conversion_rate ?? $json.output?.tunnel_estimated_conversion_rate ?? '' }}",
               "type": "string"
             },
             {
@@ -1143,6 +1173,36 @@
               "id": "landing_page_promise_id",
               "name": "landing_page_promise",
               "value": "={{ $json.landing_page_promise || $json.hook_de_sortie || $json.output.hook_de_sortie || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d8e18e81-a91a-40ae-bdc6-72cf542fee03",
+              "name": "variant_count",
+              "value": "={{ $json.variant_count_from_cards ?? $json.version_count ?? 0 }}",
+              "type": "string"
+            },
+            {
+              "id": "44469df6-1ba8-4ee5-844b-615f97def0ba",
+              "name": "variant_details_json",
+              "value": "={{ $json.variant_details_json || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a90cb6bd-077e-45a1-9898-185162067e94",
+              "name": "variant_titles_preview",
+              "value": "={{ [$json.variant_title_1, $json.variant_title_2, $json.variant_title_3].filter(v => v && v.toString().trim() !== '').join(' | ') }}",
+              "type": "string"
+            },
+            {
+              "id": "115e398b-26a3-4d85-8623-de2b64bdb5fe",
+              "name": "variant_bodies_preview",
+              "value": "={{ [$json.variant_copy_1, $json.variant_copy_2, $json.variant_copy_3].filter(v => v && v.toString().trim() !== '').join(' | ') }}",
+              "type": "string"
+            },
+            {
+              "id": "0ca1cfc9-2539-4ff5-bc99-400d3ae6abd3",
+              "name": "variant_urls_preview",
+              "value": "={{ [$json.variant_url_1, $json.variant_url_2, $json.variant_url_3].filter(v => v && v.toString().trim() !== '').join(' | ') }}",
               "type": "string"
             }
           ]
@@ -1273,6 +1333,216 @@
         1200,
         208
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst out = [];\n\nconst parseJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const t = value.trim();\n  if (!t) return null;\n  try { return JSON.parse(t); } catch (_) { return null; }\n};\n\nconst clean = (v) => (typeof v === 'string' ? v.trim() : '');\n\nfor (const item of items) {\n  const j = item.json || {};\n  const parsedVariants = parseJson(j.variant_details_json);\n  const variants = Array.isArray(parsedVariants) ? parsedVariants : [];\n  if (variants.length === 0) continue;\n\n  const total = variants.length;\n  for (let i = 0; i < variants.length; i++) {\n    const v = variants[i] || {};\n\n    const variant_headline = clean(v.variant_headline || v.title);\n    const variant_title = clean(v.title || v.variant_headline);\n    const variant_body = clean(v.body);\n    const variant_link_description = clean(v.link_description || v.linkDescription);\n    const variant_cta_type = clean(v.cta_type || v.ctaType);\n    const variant_cta_text = clean(v.cta_text || v.ctaText);\n    const variant_link_url = clean(v.link_url || v.linkUrl);\n    const variant_original_image_url = clean(v.original_image_url || v.originalImageUrl || v.image_url || v.imageUrl);\n    const variant_resized_image_url = clean(v.resized_image_url || v.resizedImageUrl);\n    const variant_video_hd_url = clean(v.video_hd_url || v.videoHdUrl || v.video_url || v.videoUrl);\n    const variant_video_sd_url = clean(v.video_sd_url || v.videoSdUrl);\n    const video_preview_image_url = clean(v.video_preview_image_url || v.videoPreviewImageUrl);\n\n    const is_variant_with_image = !!(variant_original_image_url || variant_resized_image_url || video_preview_image_url);\n    const is_variant_with_video = !!(variant_video_hd_url || variant_video_sd_url);\n\n    const hasUsefulContent = [\n      variant_headline,\n      variant_title,\n      variant_body,\n      variant_link_description,\n      variant_link_url,\n      variant_original_image_url,\n      variant_video_hd_url,\n      variant_video_sd_url,\n      variant_cta_type,\n      variant_cta_text\n    ].some(Boolean);\n\n    if (!hasUsefulContent) continue;\n\n    out.push({\n      json: {\n        ad_id: j.ad_id || '',\n        pipeline_item_id: j.pipeline_item_id || '',\n        variant_index: i + 1,\n        variant_count_total: total,\n        brand: j.brand || '',\n        form_type: j.final_form_type || j.form_type || '',\n        parent_headline: j.headline || '',\n        parent_body_text: j.body_text || '',\n        variant_title,\n        variant_body,\n        variant_link_description,\n        variant_cta_type,\n        variant_cta_text,\n        variant_link_url,\n        variant_original_image_url,\n        variant_resized_image_url,\n        variant_video_hd_url,\n        variant_video_sd_url,\n        video_preview_image_url,\n        is_variant_with_image,\n        is_variant_with_video\n      }\n    });\n  }\n}\n\nreturn out;"
+      },
+      "id": "4ad553ff-ed6b-45ef-9558-e1e8ec55be32",
+      "name": "Build Variants Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "018a4573-6b3e-4610-ad46-014fb751238b",
+              "name": "Date",
+              "value": "={{ $now.format('dd/MM/yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "13663f01-526b-4a64-b675-321edf596a78",
+              "name": "ad_id",
+              "value": "={{ String($json.ad_id || '') }}",
+              "type": "string"
+            },
+            {
+              "id": "186f3d95-9812-4c29-879b-814fa3c4ca46",
+              "name": "pipeline_item_id",
+              "value": "={{ $json.pipeline_item_id || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "9b85b37a-1d67-46fc-87df-c0fc52c1a79d",
+              "name": "variant_index",
+              "value": "={{ $json.variant_index ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "7f2552f0-2369-4e3c-9676-a93a1401e64a",
+              "name": "variant_count_total",
+              "value": "={{ $json.variant_count_total ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "1930ff1c-5076-4b2c-85a4-5d607395ca6d",
+              "name": "brand",
+              "value": "={{ $json.brand || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "7db967d5-bcdc-46c8-b371-975426be15b5",
+              "name": "form_type",
+              "value": "={{ $json.form_type || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "30373d4a-4d5a-436a-b32a-c57d4644ecb5",
+              "name": "parent_headline",
+              "value": "={{ $json.parent_headline || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "9a9d479e-8abf-4035-b774-e41cf0c180f5",
+              "name": "parent_body_text",
+              "value": "={{ $json.parent_body_text || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "c502e064-8388-4692-ae74-eb947f87eb23",
+              "name": "variant_headline",
+              "value": "={{ $json.variant_headline || $json.variant_title || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "73deafe8-dd7f-4e9b-b603-7ae5b5dd01aa",
+              "name": "variant_title",
+              "value": "={{ $json.variant_title || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "81ed0554-e30e-4cf6-a392-bfd47c3e11b4",
+              "name": "variant_body",
+              "value": "={{ $json.variant_body || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "75afecff-2ad0-4a12-a3d4-acaa1f83fdcf",
+              "name": "variant_link_description",
+              "value": "={{ $json.variant_link_description || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "4f29e771-6fc3-41a0-9378-8525b3edbe5d",
+              "name": "variant_cta_type",
+              "value": "={{ $json.variant_cta_type || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e712fb01-0f62-4c40-ac1a-33a3a5c476e2",
+              "name": "variant_cta_text",
+              "value": "={{ $json.variant_cta_text || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f217d329-2823-4cb7-af4d-aa87c70fc7d1",
+              "name": "variant_link_url",
+              "value": "={{ $json.variant_link_url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "1909ddc6-bc2d-41d0-a879-84784a7deb2d",
+              "name": "variant_original_image_url",
+              "value": "={{ $json.variant_original_image_url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "3c6b10c4-983d-479f-a6c6-7b14d9cae508",
+              "name": "variant_resized_image_url",
+              "value": "={{ $json.variant_resized_image_url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "99dfed53-a2a2-4dc8-98bb-841f895bd69e",
+              "name": "variant_video_hd_url",
+              "value": "={{ $json.variant_video_hd_url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "8a02c2c5-db92-42c5-a80c-460421aba58e",
+              "name": "variant_video_sd_url",
+              "value": "={{ $json.variant_video_sd_url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "3717302f-7af9-4812-a1a5-d453a619997d",
+              "name": "video_preview_image_url",
+              "value": "={{ $json.video_preview_image_url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b81f2249-2518-417a-835c-54d27a4fccdd",
+              "name": "is_variant_with_image",
+              "value": "={{ $json.is_variant_with_image ? 'true' : 'false' }}",
+              "type": "string"
+            },
+            {
+              "id": "390603f5-1a15-483b-be51-89075c59b5da",
+              "name": "is_variant_with_video",
+              "value": "={{ $json.is_variant_with_video ? 'true' : 'false' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e1c2f229-ffea-461d-8d00-6c0f78608a3c",
+      "name": "Map Google Sheet (Ads Variants)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1808,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "15QgxHcULpsJ66b2H7WhZR2shFPqfiUpCMLPMSEvS-JE",
+          "mode": "list",
+          "cachedResultName": "Meta_Ads_market",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15QgxHcULpsJ66b2H7WhZR2shFPqfiUpCMLPMSEvS-JE/editusp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ads_variants",
+          "mode": "list",
+          "cachedResultName": "ads_variants",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15QgxHcULpsJ66b2H7WhZR2shFPqfiUpCMLPMSEvS-JE/edit"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f052efc6-7b97-4a77-bd48-770decfc5ebe",
+      "name": "Append Sheet (Ads Variants)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        520
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JxE7UhtCc0y0CpDY",
+          "name": "Google Sheets account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -1673,6 +1943,33 @@
         [
           {
             "node": "Route by Form Type",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Variants Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Variants Rows": {
+      "main": [
+        [
+          {
+            "node": "Map Google Sheet (Ads Variants)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Google Sheet (Ads Variants)": {
+      "main": [
+        [
+          {
+            "node": "Append Sheet (Ads Variants)",
             "type": "main",
             "index": 0
           }
