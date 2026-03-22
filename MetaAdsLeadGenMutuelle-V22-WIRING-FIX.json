@@ -2698,6 +2698,273 @@
           "name": "Google Sheets OAuth2 API"
         }
       }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Tu es un directeur creatif senior Meta Ads pour la generation de leads mutuelle sante en France.\nTa mission: produire une Creative Factory orientee conversion (image-first) a partir d'une ad winner.\n\nContexte winner:\n- ad_id: {{ $json.ad_id }}\n- brand: {{ $json.brand }}\n- form_type: {{ $json.final_form_type || $json.form_type }}\n- hook_type: {{ $json.hook_type }}\n- why_it_works: {{ $json.why_it_works }}\n- takeaway_1: {{ $json.takeaway_1 }}\n- takeaway_2: {{ $json.takeaway_2 }}\n- takeaway_3: {{ $json.takeaway_3 }}\n- winner_reason: {{ $json.winner_reason }}\n- best_variant_preview: {{ $json.best_variant_preview }}\n\nContraintes:\n- Focus marche FR mutuelle sante (seniors, economies, devis rapide, comparateur, simplicite, remboursement, optique, dentaire, hospitalisation).\n- Pas de concepts abstraits: visuels credibles, lisibles mobile, orient?s conversion.\n- Produis exactement 3 angles, 3 hooks, 3 ads completes, 3 concepts visuels, 3 prompts image exploitables.\n- Chaque ad doit inclure les champs video de preparation (pas de video finale requise).\n- Retour strict en JSON valide uniquement.\n\nRetourne EXACTEMENT cette structure:\n{\n  \"creative_output\": {\n    \"angles\": [\"\", \"\", \"\"],\n    \"ads\": [\n      {\n        \"angle\": \"\",\n        \"hook\": \"\",\n        \"primary_text\": \"\",\n        \"headline\": \"\",\n        \"cta\": \"\",\n        \"rationale\": \"\",\n        \"visual_angle\": \"\",\n        \"visual_concept\": \"\",\n        \"image_prompt\": \"\",\n        \"image_text_overlay\": \"\",\n        \"design_notes\": \"\",\n        \"video_angle\": \"\",\n        \"video_hook\": \"\",\n        \"video_script\": \"\",\n        \"video_scenes\": [\"\", \"\", \"\"],\n        \"video_text_overlay\": \"\",\n        \"video_cta\": \"\",\n        \"video_creation_prompt\": \"\"\n      }\n    ],\n    \"form_recommendation\": {\n      \"required_fields\": [],\n      \"optional_fields\": [],\n      \"qualification_fields\": []\n    }\n  }\n}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Tu es un expert creative strategist Meta Ads pour courtiers mutuelle sante France. Sois concret, orient? conversion et execution."
+            }
+          ]
+        }
+      },
+      "id": "ca73dcda-be35-43e5-958c-2a0fff6bc159",
+      "name": "Creative Factory (Image-First)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        2016,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst out = [];\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const t = value.trim();\n  if (!t) return null;\n  try { return JSON.parse(t); } catch (_) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (!m) return null;\n    try { return JSON.parse(m[0]); } catch (_) { return null; }\n  }\n};\n\nconst txt = (v) => (typeof v === 'string' ? v.trim() : '');\n\nfor (const item of items) {\n  const j = item.json || {};\n\n  const parsed =\n    (j.output && typeof j.output === 'object' ? j.output : null)\n    || parsePossibleJson(j.output)\n    || parsePossibleJson(j.text)\n    || parsePossibleJson(j.response)\n    || null;\n\n  const creative = (parsed && parsed.creative_output) ? parsed.creative_output : (j.creative_output || {});\n  const ads = Array.isArray(creative.ads) ? creative.ads : [];\n  const angles = Array.isArray(creative.angles) ? creative.angles : [];\n  const fr = creative.form_recommendation || {};\n\n  // Safety fallback: ensure at least one generated row if parsing is partial\n  const adsToUse = ads.length > 0 ? ads : [{\n    angle: angles[0] || j.hook_type || 'Angle economie',\n    hook: j.hook_type || 'Economisez sur votre mutuelle',\n    primary_text: j.body_text || j.ad_copy || '',\n    headline: j.headline || '',\n    cta: 'Obtenir mon devis',\n    rationale: j.why_it_works || '',\n    visual_angle: 'Temoignage + economie',\n    visual_concept: 'Couple senior rassure avec simulation de devis',\n    image_prompt: 'Photo realiste style publicite mutuelle sante france, couple senior, ambiance rassurante, callout economies, format 1:1',\n    image_text_overlay: 'Jusqu a 300EUR d economies / an',\n    design_notes: 'Contraste fort, logo visible, CTA lisible',\n    video_angle: 'Devis rapide et rassurance',\n    video_hook: 'Et si vous payiez moins pour mieux rembourser?',\n    video_script: 'Hook + probleme + solution + preuve + CTA',\n    video_scenes: ['Hook visuel', 'Comparaison avant/apres', 'CTA devis'],\n    video_text_overlay: 'Devis en 30 sec',\n    video_cta: 'Verifier mes economies',\n    video_creation_prompt: 'Video UGC style courtier mutuelle france, 20 secondes, ton rassurant'\n  }];\n\n  for (let i = 0; i < adsToUse.length; i++) {\n    const ad = adsToUse[i] || {};\n    const imagePrompt = txt(ad.image_prompt);\n    const generatedImageUrl = imagePrompt\n      ? `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1024&height=1024&nologo=true`\n      : '';\n\n    out.push({\n      json: {\n        ad_id: j.ad_id || '',\n        brand: j.brand || '',\n        winner_score: j.winner_score || '',\n        winner_status: j.winner_status || '',\n        priority_rank: j.priority_rank || '',\n        form_type: j.final_form_type || j.form_type || '',\n        angle: txt(ad.angle),\n        hook: txt(ad.hook),\n        primary_text: txt(ad.primary_text),\n        headline: txt(ad.headline),\n        cta: txt(ad.cta),\n        rationale: txt(ad.rationale),\n        visual_angle: txt(ad.visual_angle),\n        visual_concept: txt(ad.visual_concept),\n        image_prompt: imagePrompt,\n        image_text_overlay: txt(ad.image_text_overlay),\n        design_notes: txt(ad.design_notes),\n        generated_image_url: generatedImageUrl,\n        video_angle: txt(ad.video_angle),\n        video_hook: txt(ad.video_hook),\n        video_script: txt(ad.video_script),\n        video_scenes: Array.isArray(ad.video_scenes) ? ad.video_scenes.join(' | ') : txt(ad.video_scenes),\n        video_text_overlay: txt(ad.video_text_overlay),\n        video_cta: txt(ad.video_cta),\n        video_creation_prompt: txt(ad.video_creation_prompt),\n        required_fields: Array.isArray(fr.required_fields) ? fr.required_fields.join(' | ') : txt(fr.required_fields),\n        optional_fields: Array.isArray(fr.optional_fields) ? fr.optional_fields.join(' | ') : txt(fr.optional_fields),\n        qualification_fields: Array.isArray(fr.qualification_fields) ? fr.qualification_fields.join(' | ') : txt(fr.qualification_fields)\n      }\n    });\n  }\n}\n\nreturn out;"
+      },
+      "id": "cc74c567-faf2-41ab-bbc0-b1efc9927255",
+      "name": "Expand Creative Output Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "94713806-9295-49d4-b978-21771c1cdbb9",
+              "name": "Date",
+              "value": "={{ $now.format('dd/MM/yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "d6ef7532-d797-4d62-a741-0325468fed4a",
+              "name": "ad_id",
+              "value": "={{ String($json.ad_id || '') }}",
+              "type": "string"
+            },
+            {
+              "id": "de07a625-5e0c-49c5-bbec-2a7bd5f19b07",
+              "name": "brand",
+              "value": "={{ $json.brand || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fcccae15-d6fa-45d2-9e15-4229aac01c59",
+              "name": "winner_score",
+              "value": "={{ $json.winner_score ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "c148f1ff-3c26-40ad-972e-40e063999b06",
+              "name": "winner_status",
+              "value": "={{ $json.winner_status || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "394d7fa1-a7bb-471f-8522-aaad0899d20a",
+              "name": "priority_rank",
+              "value": "={{ $json.priority_rank ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "32df5768-0379-4ce2-bec3-82d216cae64c",
+              "name": "form_type",
+              "value": "={{ $json.form_type || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "df8eb0bc-6481-44ee-83d3-f4e96ef65ef0",
+              "name": "angle",
+              "value": "={{ $json.angle || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "4e850db2-2f92-460e-a29b-6a4da7173d9d",
+              "name": "hook",
+              "value": "={{ $json.hook || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "6cc15b0b-ef8c-4f7a-9295-67326ef67e1f",
+              "name": "primary_text",
+              "value": "={{ $json.primary_text || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "09aff652-af2e-4fe5-a234-21ae4b964b66",
+              "name": "headline",
+              "value": "={{ $json.headline || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a9b58ff4-1ee1-4eac-8321-a6e7788e5843",
+              "name": "cta",
+              "value": "={{ $json.cta || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "aaa380ba-69ea-40c6-881e-b6ab458e59a5",
+              "name": "rationale",
+              "value": "={{ $json.rationale || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "866c3492-86f2-4a06-9196-1a8bb56d49b0",
+              "name": "visual_angle",
+              "value": "={{ $json.visual_angle || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ff332360-32cc-4712-9223-a49fb73123d1",
+              "name": "visual_concept",
+              "value": "={{ $json.visual_concept || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "1d96ff73-1cab-4596-9841-007b5327ed07",
+              "name": "image_prompt",
+              "value": "={{ $json.image_prompt || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "7207bd98-022e-4e5e-ab43-4b141775613f",
+              "name": "image_text_overlay",
+              "value": "={{ $json.image_text_overlay || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "1b6d0430-914e-4d55-9226-959c44c56af0",
+              "name": "design_notes",
+              "value": "={{ $json.design_notes || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "2a91eefe-cb19-4160-ab2c-87ec5139ff7a",
+              "name": "generated_image_url",
+              "value": "={{ $json.generated_image_url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f1127da0-3df0-47a4-924a-2e844b7e9ad7",
+              "name": "video_angle",
+              "value": "={{ $json.video_angle || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "c1a9cb61-22c0-4caa-aeaa-3a724d947f56",
+              "name": "video_hook",
+              "value": "={{ $json.video_hook || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "c4f4e9f1-26dc-42d7-9d0f-f2c6865b0512",
+              "name": "video_script",
+              "value": "={{ $json.video_script || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "6513455f-f6c5-4502-b975-2bdaec58cd9a",
+              "name": "video_scenes",
+              "value": "={{ $json.video_scenes || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "0c26a1be-755a-4623-9a13-e83ad921fa18",
+              "name": "video_text_overlay",
+              "value": "={{ $json.video_text_overlay || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a0fadfbd-153b-4d8d-a74c-3c50cd62ff60",
+              "name": "video_cta",
+              "value": "={{ $json.video_cta || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "c4c45971-d1d7-4645-9105-9b01b7b44f7f",
+              "name": "video_creation_prompt",
+              "value": "={{ $json.video_creation_prompt || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "982b8fd3-c9a3-4d43-b7d9-2c851bbd554c",
+              "name": "required_fields",
+              "value": "={{ $json.required_fields || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f03e4b2b-03f3-483b-8cd8-803f45b9296f",
+              "name": "optional_fields",
+              "value": "={{ $json.optional_fields || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "30ea7d18-b1a9-4bb1-ba99-8ff274845574",
+              "name": "qualification_fields",
+              "value": "={{ $json.qualification_fields || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4a61e4f4-c906-4f36-955e-c8118bd1350d",
+      "name": "Map Google Sheet (Creative Ads)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2432,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "15QgxHcULpsJ66b2H7WhZR2shFPqfiUpCMLPMSEvS-JE",
+          "mode": "list",
+          "cachedResultName": "Meta_Ads_market",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15QgxHcULpsJ66b2H7WhZR2shFPqfiUpCMLPMSEvS-JE/editusp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "creative_ads",
+          "mode": "list",
+          "cachedResultName": "creative_ads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15QgxHcULpsJ66b2H7WhZR2shFPqfiUpCMLPMSEvS-JE/edit"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "d8b637a1-dfcd-42e7-a8c3-e7869fca3046",
+      "name": "Append Sheet (Creative Ads)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2640,
+        920
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JxE7UhtCc0y0CpDY",
+          "name": "Google Sheets account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -2784,6 +3051,11 @@
         [
           {
             "node": "Generate Executive Summary",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Creative Factory (Image-First)",
             "type": "ai_languageModel",
             "index": 0
           }
@@ -3154,6 +3426,11 @@
             "node": "Map Google Sheet (Winners)",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Creative Factory (Image-First)",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -3163,6 +3440,39 @@
         [
           {
             "node": "Append Sheet (Winners)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creative Factory (Image-First)": {
+      "main": [
+        [
+          {
+            "node": "Expand Creative Output Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Creative Output Rows": {
+      "main": [
+        [
+          {
+            "node": "Map Google Sheet (Creative Ads)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Google Sheet (Creative Ads)": {
+      "main": [
+        [
+          {
+            "node": "Append Sheet (Creative Ads)",
             "type": "main",
             "index": 0
           }
