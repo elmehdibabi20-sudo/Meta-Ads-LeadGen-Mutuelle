@@ -223,7 +223,8 @@
               "message": "Tu es un consultant senior acquisition digitale pour courtiers mutuelle sante en France. Tu fournis des analyses specifiques, actionnables, orientees conversion et concurrence."
             }
           ]
-        }
+        },
+        "hasOutputParser": false
       },
       "id": "551af6bc-2529-420d-96c1-2402ccc78224",
       "name": "Generate Executive Summary",
@@ -284,8 +285,25 @@
       "parameters": {
         "url": "={{ $json.landing_page_url }}",
         "options": {
-          "redirect": {},
-          "timeout": 10000
+          "redirect": {
+            "followRedirects": true,
+            "maxRedirects": 10
+          },
+          "timeout": 15000,
+          "ignoreResponseCode": true
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            }
+          ]
         }
       },
       "id": "edd4a9fc-c351-48f4-a735-18b75b2ffe27",
@@ -300,7 +318,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const currentItems = $input.all();\n\nlet checkNativeItems = [];\ntry {\n  checkNativeItems = $('Check Native Form').all(1);\n} catch (_) {\n  try {\n    checkNativeItems = $('Check Native Form').all();\n  } catch (_) {\n    checkNativeItems = [];\n  }\n}\n\nconst extractText = (m, fallback) => (m ? m[1].replace(/<[^>]*>?/gm, '').trim() : fallback);\n\nreturn currentItems.map((item, index) => {\n  const current = item.json || {};\n  const pairedIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : index;\n  const upstream = (checkNativeItems[pairedIndex] && checkNativeItems[pairedIndex].json) ? checkNativeItems[pairedIndex].json : current;\n\n  const rawHtml = current.data ?? current.body ?? '';\n  const html = typeof rawHtml === 'string' ? rawHtml : String(rawHtml || '');\n\n  if (!html && upstream.skip_html_fetch !== true) {\n    return {\n      json: {\n        ...upstream,\n        landing_page_title: 'Erreur: Page non accessible',\n        form_type: 'error',\n        form_fields_json: '',\n        form_total_fields: 0,\n        form_required_fields: 0,\n        form_optional_fields: 0,\n        form_has_email: false,\n        email_field_name: '',\n        form_has_phone: false,\n        phone_field_name: '',\n        form_has_birth_date: false,\n        birth_date_field_name: '',\n        form_has_postal_code: false,\n        postal_code_field_name: '',\n        form_has_social_status: false,\n        social_status_field_name: '',\n        cta_text: '',\n        estimated_completion_time: ''\n      }\n    };\n  }\n\n  const h1Match = html.match(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/i);\n  const h2Match = html.match(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/i);\n  const pMatch = html.match(/<p[^>]*>([\\s\\S]*?)<\\/p>/i);\n\n  const landing_page_title = extractText(h1Match, 'Pas de titre');\n  const landing_page_subtitle = extractText(h2Match, '');\n  const landing_page_promise = extractText(pMatch, '').substring(0, 150);\n\n  const formFields = [];\n  for (const m of html.matchAll(/<input[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    const t = (m[0].match(/type=[\"']([^\"']*)[\"']/i) || [, 'text'])[1].toLowerCase();\n    if (n && t !== 'hidden' && t !== 'submit') formFields.push({ name: n, type: t, required: /required/i.test(m[0]) });\n  }\n  for (const m of html.matchAll(/<select[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    if (n) formFields.push({ name: n, type: 'select', required: /required/i.test(m[0]) });\n  }\n\n  const flags = { email: false, phone: false, birth: false, postal: false, social: false };\n  const names = { email: '', phone: '', birth: '', postal: '', social: '' };\n\n  formFields.forEach((f) => {\n    const n = (f.name || '').toLowerCase();\n    if (!flags.email && (n.includes('email') || f.type === 'email' || n.includes('mail'))) { flags.email = true; names.email = f.name; }\n    if (!flags.phone && (n.includes('phone') || n.includes('tel') || f.type === 'tel')) { flags.phone = true; names.phone = f.name; }\n    if (!flags.birth && (n.includes('birth') || n.includes('date') || n.includes('age') || n.includes('naissance'))) { flags.birth = true; names.birth = f.name; }\n    if (!flags.postal && (n.includes('postal') || n.includes('code') || n.includes('zip') || n.includes('cp'))) { flags.postal = true; names.postal = f.name; }\n    if (!flags.social && (n.includes('status') || n.includes('regime') || n.includes('secu') || n.includes('situation'))) { flags.social = true; names.social = f.name; }\n  });\n\n  const ctaMatch = html.match(/<button[^>]*>([\\s\\S]*?)<\\/button>/i) || html.match(/<input[^>]*type=[\"']submit[\"'][^>]*value=[\"']([^\"']*)[\"']/i);\n  const final_form_type = upstream.final_form_type || upstream.form_type || 'external_landing_page';\n\n  const requiredCount = formFields.filter((f) => f.required).length;\n\n  return {\n    json: {\n      ...upstream,\n      landing_page_title: upstream.landing_page_title || landing_page_title,\n      landing_page_subtitle: upstream.landing_page_subtitle || landing_page_subtitle,\n      landing_page_promise: upstream.landing_page_promise || landing_page_promise,\n      form_type: final_form_type,\n      form_fields_json: upstream.form_fields_json || JSON.stringify(formFields),\n      form_total_fields: upstream.form_total_fields ?? formFields.length,\n      form_required_fields: upstream.form_required_fields ?? requiredCount,\n      form_optional_fields: upstream.form_optional_fields ?? (formFields.length - requiredCount),\n      form_has_email: upstream.form_has_email ?? flags.email,\n      email_field_name: upstream.email_field_name || names.email,\n      form_has_phone: upstream.form_has_phone ?? flags.phone,\n      phone_field_name: upstream.phone_field_name || names.phone,\n      form_has_birth_date: upstream.form_has_birth_date ?? flags.birth,\n      birth_date_field_name: upstream.birth_date_field_name || names.birth,\n      form_has_postal_code: upstream.form_has_postal_code ?? flags.postal,\n      postal_code_field_name: upstream.postal_code_field_name || names.postal,\n      form_has_social_status: upstream.form_has_social_status ?? flags.social,\n      social_status_field_name: upstream.social_status_field_name || names.social,\n      cta_text: upstream.cta_text || extractText(ctaMatch, 'Envoyer'),\n      estimated_completion_time: upstream.estimated_completion_time || `${Math.round(formFields.length * 0.5 + 0.5)} min`\n    }\n  };\n});"
+        "jsCode": "const currentItems = $input.all();\n\nlet checkNativeItems = [];\ntry {\n  checkNativeItems = $('Check Native Form').all(1);\n} catch (_) {\n  try {\n    checkNativeItems = $('Check Native Form').all();\n  } catch (_) {\n    checkNativeItems = [];\n  }\n}\n\nconst extractText = (m, fallback) => (m ? m[1].replace(/<[^>]*>?/gm, '').trim() : fallback);\n\nreturn currentItems.map((item, index) => {\n  const current = item.json || {};\n  const pairedIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : index;\n  const upstream = (checkNativeItems[pairedIndex] && checkNativeItems[pairedIndex].json) ? checkNativeItems[pairedIndex].json : current;\n\n  const rawHtml = current.data ?? current.body ?? '';\n  const html = typeof rawHtml === 'string' ? rawHtml : String(rawHtml || '');\n\n  const redirectMatch = html.match(/<a[^>]*href=[\"']([^\"']+)[\"'][^>]*>\\s*moved here\\s*<\\/a>/i);\n  if (redirectMatch && redirectMatch[1]) {\n    const resolvedUrl = redirectMatch[1].trim();\n    return {\n      json: {\n        ...upstream,\n        form_type: upstream.final_form_type || upstream.form_type || 'external_landing_page',\n        final_form_type: upstream.final_form_type || upstream.form_type || 'external_landing_page',\n        landing_page_url: resolvedUrl || upstream.landing_page_url || '',\n        landing_page_title: upstream.landing_page_title || 'Redirection detectee',\n        landing_page_subtitle: upstream.landing_page_subtitle || '',\n        landing_page_promise: upstream.landing_page_promise || '',\n        lp_parse_status: 'redirect_page_detected',\n        lp_parse_note: 'HTTP redirection HTML detectee; URL finale extraite depuis lien moved here',\n        form_fields_json: upstream.form_fields_json || '',\n        form_total_fields: upstream.form_total_fields ?? 0,\n        form_required_fields: upstream.form_required_fields ?? 0,\n        form_optional_fields: upstream.form_optional_fields ?? 0,\n        form_has_email: upstream.form_has_email ?? false,\n        email_field_name: upstream.email_field_name || '',\n        form_has_phone: upstream.form_has_phone ?? false,\n        phone_field_name: upstream.phone_field_name || '',\n        form_has_birth_date: upstream.form_has_birth_date ?? false,\n        birth_date_field_name: upstream.birth_date_field_name || '',\n        form_has_postal_code: upstream.form_has_postal_code ?? false,\n        postal_code_field_name: upstream.postal_code_field_name || '',\n        form_has_social_status: upstream.form_has_social_status ?? false,\n        social_status_field_name: upstream.social_status_field_name || '',\n        cta_text: upstream.cta_text || '',\n        estimated_completion_time: upstream.estimated_completion_time || ''\n      }\n    };\n  }\n\n  if (!html && upstream.skip_html_fetch !== true) {\n    return {\n      json: {\n        ...upstream,\n        landing_page_title: upstream.landing_page_title || 'Landing page non recuperee',\n        form_type: upstream.final_form_type || upstream.form_type || 'external_landing_page',\n        final_form_type: upstream.final_form_type || upstream.form_type || 'external_landing_page',\n        lp_parse_status: 'html_not_retrieved',\n        lp_parse_note: 'Impossible de recuperer le HTML final; item conserve pour traitement aval',\n        form_fields_json: upstream.form_fields_json || '',\n        form_total_fields: upstream.form_total_fields ?? 0,\n        form_required_fields: upstream.form_required_fields ?? 0,\n        form_optional_fields: upstream.form_optional_fields ?? 0,\n        form_has_email: upstream.form_has_email ?? false,\n        email_field_name: upstream.email_field_name || '',\n        form_has_phone: upstream.form_has_phone ?? false,\n        phone_field_name: upstream.phone_field_name || '',\n        form_has_birth_date: upstream.form_has_birth_date ?? false,\n        birth_date_field_name: upstream.birth_date_field_name || '',\n        form_has_postal_code: upstream.form_has_postal_code ?? false,\n        postal_code_field_name: upstream.postal_code_field_name || '',\n        form_has_social_status: upstream.form_has_social_status ?? false,\n        social_status_field_name: upstream.social_status_field_name || '',\n        cta_text: upstream.cta_text || '',\n        estimated_completion_time: upstream.estimated_completion_time || ''\n      }\n    };\n  }\n\n  const h1Match = html.match(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/i);\n  const h2Match = html.match(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/i);\n  const pMatch = html.match(/<p[^>]*>([\\s\\S]*?)<\\/p>/i);\n\n  const landing_page_title = extractText(h1Match, 'Pas de titre');\n  const landing_page_subtitle = extractText(h2Match, '');\n  const landing_page_promise = extractText(pMatch, '').substring(0, 150);\n\n  const formFields = [];\n  for (const m of html.matchAll(/<input[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    const t = (m[0].match(/type=[\"']([^\"']*)[\"']/i) || [, 'text'])[1].toLowerCase();\n    if (n && t !== 'hidden' && t !== 'submit') formFields.push({ name: n, type: t, required: /required/i.test(m[0]) });\n  }\n  for (const m of html.matchAll(/<select[^>]*>/gi)) {\n    const n = (m[0].match(/name=[\"']([^\"']*)[\"']/i) || [])[1];\n    if (n) formFields.push({ name: n, type: 'select', required: /required/i.test(m[0]) });\n  }\n\n  const flags = { email: false, phone: false, birth: false, postal: false, social: false };\n  const names = { email: '', phone: '', birth: '', postal: '', social: '' };\n\n  formFields.forEach((f) => {\n    const n = (f.name || '').toLowerCase();\n    if (!flags.email && (n.includes('email') || f.type === 'email' || n.includes('mail'))) { flags.email = true; names.email = f.name; }\n    if (!flags.phone && (n.includes('phone') || n.includes('tel') || f.type === 'tel')) { flags.phone = true; names.phone = f.name; }\n    if (!flags.birth && (n.includes('birth') || n.includes('date') || n.includes('age') || n.includes('naissance'))) { flags.birth = true; names.birth = f.name; }\n    if (!flags.postal && (n.includes('postal') || n.includes('code') || n.includes('zip') || n.includes('cp'))) { flags.postal = true; names.postal = f.name; }\n    if (!flags.social && (n.includes('status') || n.includes('regime') || n.includes('secu') || n.includes('situation'))) { flags.social = true; names.social = f.name; }\n  });\n\n  const ctaMatch = html.match(/<button[^>]*>([\\s\\S]*?)<\\/button>/i) || html.match(/<input[^>]*type=[\"']submit[\"'][^>]*value=[\"']([^\"']*)[\"']/i);\n  const final_form_type = upstream.final_form_type || upstream.form_type || 'external_landing_page';\n\n  const requiredCount = formFields.filter((f) => f.required).length;\n\n  return {\n    json: {\n      ...upstream,\n      landing_page_title: upstream.landing_page_title || landing_page_title,\n      landing_page_subtitle: upstream.landing_page_subtitle || landing_page_subtitle,\n      landing_page_promise: upstream.landing_page_promise || landing_page_promise,\n      form_type: final_form_type,\n      form_fields_json: upstream.form_fields_json || JSON.stringify(formFields),\n      form_total_fields: upstream.form_total_fields ?? formFields.length,\n      form_required_fields: upstream.form_required_fields ?? requiredCount,\n      form_optional_fields: upstream.form_optional_fields ?? (formFields.length - requiredCount),\n      form_has_email: upstream.form_has_email ?? flags.email,\n      email_field_name: upstream.email_field_name || names.email,\n      form_has_phone: upstream.form_has_phone ?? flags.phone,\n      phone_field_name: upstream.phone_field_name || names.phone,\n      form_has_birth_date: upstream.form_has_birth_date ?? flags.birth,\n      birth_date_field_name: upstream.birth_date_field_name || names.birth,\n      form_has_postal_code: upstream.form_has_postal_code ?? flags.postal,\n      postal_code_field_name: upstream.postal_code_field_name || names.postal,\n      form_has_social_status: upstream.form_has_social_status ?? flags.social,\n      social_status_field_name: upstream.social_status_field_name || names.social,\n      cta_text: upstream.cta_text || extractText(ctaMatch, 'Envoyer'),\n      estimated_completion_time: upstream.estimated_completion_time || `${Math.round(formFields.length * 0.5 + 0.5)} min`\n    }\n  };\n});"
       },
       "id": "523ffd3a-41be-48b2-8c5c-bd12c21abac0",
       "name": "Parse Landing Page Content",
@@ -2722,7 +2740,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst out = [];\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const t = value.trim();\n  if (!t) return null;\n  try { return JSON.parse(t); } catch (_) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (!m) return null;\n    try { return JSON.parse(m[0]); } catch (_) { return null; }\n  }\n};\n\nconst txt = (v) => (typeof v === 'string' ? v.trim() : '');\n\nfor (const item of items) {\n  const j = item.json || {};\n\n  const parsed =\n    (j.output && typeof j.output === 'object' ? j.output : null)\n    || parsePossibleJson(j.output)\n    || parsePossibleJson(j.text)\n    || parsePossibleJson(j.response)\n    || null;\n\n  const creative = (parsed && parsed.creative_output) ? parsed.creative_output : (j.creative_output || {});\n  const ads = Array.isArray(creative.ads) ? creative.ads : [];\n  const angles = Array.isArray(creative.angles) ? creative.angles : [];\n  const fr = creative.form_recommendation || {};\n\n  // Safety fallback: ensure at least one generated row if parsing is partial\n  const adsToUse = ads.length > 0 ? ads : [{\n    angle: angles[0] || j.hook_type || 'Angle economie',\n    hook: j.hook_type || 'Economisez sur votre mutuelle',\n    primary_text: j.body_text || j.ad_copy || '',\n    headline: j.headline || '',\n    cta: 'Obtenir mon devis',\n    rationale: j.why_it_works || '',\n    visual_angle: 'Temoignage + economie',\n    visual_concept: 'Couple senior rassure avec simulation de devis',\n    image_prompt: 'Photo realiste style publicite mutuelle sante france, couple senior, ambiance rassurante, callout economies, format 1:1',\n    image_text_overlay: 'Jusqu a 300EUR d economies / an',\n    design_notes: 'Contraste fort, logo visible, CTA lisible',\n    video_angle: 'Devis rapide et rassurance',\n    video_hook: 'Et si vous payiez moins pour mieux rembourser?',\n    video_script: 'Hook + probleme + solution + preuve + CTA',\n    video_scenes: ['Hook visuel', 'Comparaison avant/apres', 'CTA devis'],\n    video_text_overlay: 'Devis en 30 sec',\n    video_cta: 'Verifier mes economies',\n    video_creation_prompt: 'Video UGC style courtier mutuelle france, 20 secondes, ton rassurant'\n  }];\n\n  for (let i = 0; i < adsToUse.length; i++) {\n    const ad = adsToUse[i] || {};\n    const imagePrompt = txt(ad.image_prompt);\n    const generatedImageUrl = imagePrompt\n      ? `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1024&height=1024&nologo=true`\n      : '';\n\n    out.push({\n      json: {\n        ad_id: j.ad_id || '',\n        brand: j.brand || '',\n        winner_score: j.winner_score || '',\n        winner_status: j.winner_status || '',\n        priority_rank: j.priority_rank || '',\n        form_type: j.final_form_type || j.form_type || '',\n        angle: txt(ad.angle),\n        hook: txt(ad.hook),\n        primary_text: txt(ad.primary_text),\n        headline: txt(ad.headline),\n        cta: txt(ad.cta),\n        rationale: txt(ad.rationale),\n        visual_angle: txt(ad.visual_angle),\n        visual_concept: txt(ad.visual_concept),\n        image_prompt: imagePrompt,\n        image_text_overlay: txt(ad.image_text_overlay),\n        design_notes: txt(ad.design_notes),\n        generated_image_url: generatedImageUrl,\n        video_angle: txt(ad.video_angle),\n        video_hook: txt(ad.video_hook),\n        video_script: txt(ad.video_script),\n        video_scenes: Array.isArray(ad.video_scenes) ? ad.video_scenes.join(' | ') : txt(ad.video_scenes),\n        video_text_overlay: txt(ad.video_text_overlay),\n        video_cta: txt(ad.video_cta),\n        video_creation_prompt: txt(ad.video_creation_prompt),\n        required_fields: Array.isArray(fr.required_fields) ? fr.required_fields.join(' | ') : txt(fr.required_fields),\n        optional_fields: Array.isArray(fr.optional_fields) ? fr.optional_fields.join(' | ') : txt(fr.optional_fields),\n        qualification_fields: Array.isArray(fr.qualification_fields) ? fr.qualification_fields.join(' | ') : txt(fr.qualification_fields)\n      }\n    });\n  }\n}\n\nreturn out;"
+        "jsCode": "const items = $input.all();\nconst out = [];\n\nconst parsePossibleJson = (value) => {\n  if (typeof value !== 'string') return null;\n  const t = value.trim();\n  if (!t) return null;\n  try { return JSON.parse(t); } catch (_) {\n    const m = t.match(/\\{[\\s\\S]*\\}/);\n    if (!m) return null;\n    try { return JSON.parse(m[0]); } catch (_) { return null; }\n  }\n};\n\nconst txt = (v) => (typeof v === 'string' ? v.trim() : '');\n\nconst safeAll = (nodeName) => {\n  try { return $(nodeName).all().map((x) => x.json || {}); } catch (_) { return []; }\n};\n\nconst parentPool = safeAll('Keep Top 3 Winners');\nconst byAdId = new Map();\nconst byPipeline = new Map();\nfor (const p of parentPool) {\n  if (p && p.ad_id !== undefined && p.ad_id !== null && String(p.ad_id).trim() !== '') byAdId.set(String(p.ad_id), p);\n  if (p && p.pipeline_item_id) byPipeline.set(String(p.pipeline_item_id), p);\n}\n\nconst pickParent = (current, item, index) => {\n  if (current && current.pipeline_item_id && byPipeline.has(String(current.pipeline_item_id))) return byPipeline.get(String(current.pipeline_item_id));\n  if (current && current.ad_id !== undefined && current.ad_id !== null && byAdId.has(String(current.ad_id))) return byAdId.get(String(current.ad_id));\n\n  const pairIndex = (item.pairedItem && typeof item.pairedItem.item === 'number') ? item.pairedItem.item : index;\n  if (typeof pairIndex === 'number' && parentPool[pairIndex]) return parentPool[pairIndex];\n\n  return current || {};\n};\n\nconst fallbackTakeaway = (idx) => {\n  if (idx === 1) return 'Mettre une promesse claire avec benefice chiffre dans les 2 premieres lignes.';\n  if (idx === 2) return 'Rendre le visuel lisible mobile avec un seul message principal et un CTA explicite.';\n  return 'Aligner angle, hook et formulaire pour maximiser la qualite des leads.';\n};\n\nfor (let index = 0; index < items.length; index++) {\n  const item = items[index];\n  const j = item.json || {};\n  const parent = pickParent(j, item, index);\n\n  const parsed =\n    (j.output && typeof j.output === 'object' ? j.output : null)\n    || parsePossibleJson(j.output)\n    || parsePossibleJson(j.text)\n    || parsePossibleJson(j.response)\n    || null;\n\n  const creative = (parsed && parsed.creative_output) ? parsed.creative_output : (j.creative_output || {});\n  const ads = Array.isArray(creative.ads) ? creative.ads : [];\n  const angles = Array.isArray(creative.angles) ? creative.angles : [];\n  const fr = creative.form_recommendation || {};\n\n  const adsToUse = ads.length > 0 ? ads : [{\n    angle: angles[0] || parent.hook_type || 'Angle economie',\n    hook: parent.hook_type || 'benefice_direct',\n    primary_text: parent.body_text || parent.ad_copy || '',\n    headline: parent.headline || '',\n    cta: 'Obtenir mon devis',\n    rationale: parent.why_it_works || parent.winner_reason || 'Positionnement orient? devis mutuelle simple et rassurant.',\n    visual_angle: 'Temoignage + economie',\n    visual_concept: 'Couple senior rassure avec simulation de devis',\n    image_prompt: 'Photo realiste style publicite mutuelle sante france, couple senior, ambiance rassurante, callout economies, format 1:1',\n    image_text_overlay: 'Jusqu a 300EUR d economies / an',\n    design_notes: 'Contraste fort, logo visible, CTA lisible',\n    video_angle: 'Devis rapide et rassurance',\n    video_hook: 'Et si vous payiez moins pour mieux rembourser?',\n    video_script: 'Hook + probleme + solution + preuve + CTA',\n    video_scenes: ['Hook visuel', 'Comparaison avant/apres', 'CTA devis'],\n    video_text_overlay: 'Devis en 30 sec',\n    video_cta: 'Verifier mes economies',\n    video_creation_prompt: 'Video UGC style courtier mutuelle france, 20 secondes, ton rassurant'\n  }];\n\n  // 3 winners x max 2 creatives = 3 a 6 creatives au total\n  const limitedAds = adsToUse.slice(0, 2);\n\n  for (let i = 0; i < limitedAds.length; i++) {\n    const ad = limitedAds[i] || {};\n    const creative_index = i + 1;\n    const adBaseId = String(parent.ad_id || j.ad_id || 'no_ad_id');\n    const creative_id = `${adBaseId}_${creative_index}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;\n\n    const imagePrompt = txt(ad.image_prompt);\n    const generatedImageUrl = imagePrompt\n      ? `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1024&height=1024&nologo=true`\n      : '';\n\n    const hasImage = Boolean(txt(parent.visual_url) || imagePrompt || txt(ad.visual_concept));\n    const hasVideo = Boolean(txt(parent.video_url) || txt(ad.video_creation_prompt) || txt(ad.video_script));\n    const visualType = hasImage && hasVideo ? 'image+video' : (hasVideo ? 'video' : 'image');\n\n    const hookType = txt(parent.hook_type) || txt(ad.hook) || 'benefice_direct';\n    const whyItWorks = txt(parent.why_it_works) || txt(ad.rationale) || `Promesse claire orientee ${txt(parent.form_type || parent.final_form_type || 'leadgen')} avec benefice concret.`;\n    const takeaway1 = txt(parent.takeaway_1) || fallbackTakeaway(1);\n    const takeaway2 = txt(parent.takeaway_2) || fallbackTakeaway(2);\n    const takeaway3 = txt(parent.takeaway_3) || fallbackTakeaway(3);\n\n    const inspirationSource = txt(parent.best_variant_preview) || txt(parent.variant_details_json) ? 'variant' : 'ad';\n\n    out.push({\n      json: {\n        creative_id,\n        creative_index,\n        generated_ad_index: creative_index,\n        base_winner_rank: parent.priority_rank ?? j.priority_rank ?? '',\n        ad_id: parent.ad_id || j.ad_id || '',\n        pipeline_item_id: parent.pipeline_item_id || j.pipeline_item_id || '',\n        brand: parent.brand || j.brand || '',\n        winner_score: parent.winner_score ?? j.winner_score ?? '',\n        winner_status: parent.winner_status || j.winner_status || '',\n        priority_rank: parent.priority_rank ?? j.priority_rank ?? '',\n        form_type: parent.final_form_type || parent.form_type || j.final_form_type || j.form_type || '',\n        winner_reason: parent.winner_reason || j.winner_reason || '',\n        lead_quality_score: parent.lead_quality_score ?? j.lead_quality_score ?? '',\n        lead_quality_level: parent.lead_quality_level || j.lead_quality_level || '',\n        hook_type: hookType,\n        why_it_works: whyItWorks,\n        takeaway_1: takeaway1,\n        takeaway_2: takeaway2,\n        takeaway_3: takeaway3,\n        angle_marketing: txt(ad.angle),\n        visual_type: visualType,\n        inspiration_source: inspirationSource,\n        angle: txt(ad.angle),\n        hook: txt(ad.hook),\n        primary_text: txt(ad.primary_text),\n        headline: txt(ad.headline),\n        cta: txt(ad.cta),\n        rationale: txt(ad.rationale),\n        visual_angle: txt(ad.visual_angle),\n        visual_concept: txt(ad.visual_concept),\n        image_prompt: imagePrompt,\n        image_text_overlay: txt(ad.image_text_overlay),\n        design_notes: txt(ad.design_notes),\n        generated_image_url: generatedImageUrl,\n        video_angle: txt(ad.video_angle),\n        video_hook: txt(ad.video_hook),\n        video_script: txt(ad.video_script),\n        video_scenes: Array.isArray(ad.video_scenes) ? ad.video_scenes.join(' | ') : txt(ad.video_scenes),\n        video_text_overlay: txt(ad.video_text_overlay),\n        video_cta: txt(ad.video_cta),\n        video_creation_prompt: txt(ad.video_creation_prompt),\n        required_fields: Array.isArray(fr.required_fields) ? fr.required_fields.join(' | ') : txt(fr.required_fields),\n        optional_fields: Array.isArray(fr.optional_fields) ? fr.optional_fields.join(' | ') : txt(fr.optional_fields),\n        qualification_fields: Array.isArray(fr.qualification_fields) ? fr.qualification_fields.join(' | ') : txt(fr.qualification_fields)\n      }\n    });\n  }\n}\n\nreturn out;"
       },
       "id": "cc74c567-faf2-41ab-bbc0-b1efc9927255",
       "name": "Expand Creative Output Rows",
@@ -2741,6 +2759,42 @@
               "id": "94713806-9295-49d4-b978-21771c1cdbb9",
               "name": "Date",
               "value": "={{ $now.format('dd/MM/yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "c1c2a279-d9d0-46ab-a128-fbd718341a67",
+              "name": "inspiration_source",
+              "value": "={{ $json.inspiration_source || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "9534a8b5-c178-4561-b211-1c451f1ec118",
+              "name": "visual_type",
+              "value": "={{ $json.visual_type || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "1c496421-7a56-4116-84b9-b10a56e626be",
+              "name": "angle_marketing",
+              "value": "={{ $json.angle_marketing || $json.angle || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "038fa0c8-f94a-4a0f-a1cc-cb40c47e0ddf",
+              "name": "generated_ad_index",
+              "value": "={{ $json.generated_ad_index ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "00cc02ad-e244-464b-a38f-b8abbd6dae60",
+              "name": "base_winner_rank",
+              "value": "={{ $json.base_winner_rank ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "4e3e27c0-164b-45d0-ab9f-5a494e2ea12b",
+              "name": "creative_id",
+              "value": "={{ $json.creative_id || '' }}",
               "type": "string"
             },
             {
@@ -2909,6 +2963,66 @@
               "id": "30ea7d18-b1a9-4bb1-ba99-8ff274845574",
               "name": "qualification_fields",
               "value": "={{ $json.qualification_fields || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ac767714-ff07-4f59-89c9-0cac4815e788",
+              "name": "pipeline_item_id",
+              "value": "={{ $json.pipeline_item_id || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e3a9c0e5-5f6a-4dc6-80a3-4bd30d94309f",
+              "name": "creative_index",
+              "value": "={{ $json.creative_index ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "69f46c18-702a-441d-a7d8-99573c6f44bd",
+              "name": "winner_reason",
+              "value": "={{ $json.winner_reason || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "9e7110a6-bb3c-4caf-8114-754fc7a1a8e6",
+              "name": "lead_quality_score",
+              "value": "={{ $json.lead_quality_score ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a0e61e56-12ac-4112-8313-923b2237fd15",
+              "name": "lead_quality_level",
+              "value": "={{ $json.lead_quality_level || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e90eae30-4bca-4399-acf3-8fa84844015f",
+              "name": "hook_type",
+              "value": "={{ $json.hook_type || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "201792e0-6049-4b71-a0b5-680d5e6f87f6",
+              "name": "why_it_works",
+              "value": "={{ $json.why_it_works || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "cd14c754-000f-4f13-9cd2-b0442b69e3e3",
+              "name": "takeaway_1",
+              "value": "={{ $json.takeaway_1 || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e1f20e49-629c-4487-b01c-d1b55b3582cf",
+              "name": "takeaway_2",
+              "value": "={{ $json.takeaway_2 || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a55b0fad-1c75-41d5-b834-ddab8f24db84",
+              "name": "takeaway_3",
+              "value": "={{ $json.takeaway_3 || '' }}",
               "type": "string"
             }
           ]
